@@ -17,6 +17,7 @@ CACHE_DIR = DATA_DIR / "cache"               # latest AISWEB response per airpor
 RAW_DIR = DATA_DIR / "raw"                   # every distinct AISWEB response, immutable (history)
 CORPUS_DB = DATA_DIR / "corpus" / "notams.sqlite"
 RUNS_DB = DATA_DIR / "runs" / "runs.sqlite"  # analysis runs and their impacts (for "what changed")
+WEB_REPORTS_DIR = DATA_DIR / "reports"      # Excel/CSV of schedules sent through the web page
 AIRPORTS_FILE = REFERENCE_DIR / "airports.csv"
 OUTPUT_DIR = PROJECT_ROOT / "output"         # reports
 REVIEW_FILE = OUTPUT_DIR / "review" / "review.csv"

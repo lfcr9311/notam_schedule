@@ -32,6 +32,7 @@ include = ["notam_schedule*"]
 
 [tool.setuptools.package-data]
 "notam_schedule.resources" = ["*.csv"]
+"notam_schedule.api" = ["static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

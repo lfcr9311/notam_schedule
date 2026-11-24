@@ -3,20 +3,24 @@
     GET  /api/health          liveness (no AISWEB call)
     GET  /api/notams          runway closures of one or more airports in a time window
     POST /api/runway-check    which closures apply to each flight leg (batch, for other systems)
+    GET  /                    web page (identificador de NOTAM); its public endpoints are in web.py (/web/*)
 
 Configuration (environment):
     AISWEB_API_KEY / AISWEB_API_PASS   AISWEB credentials (or .env in the project root)
     NOTAM_API_KEY                      when set, every /api/* call except /api/health needs header X-API-Key
     NOTAM_OFFLINE_DIR                  read <ICAO>.xml files instead of calling the AISWEB (tests, demos)
     NOTAM_CACHE_MIN                    AISWEB response cache in minutes (default 60)
+    NOTAM_ROOT_PATH                    path prefix behind the proxy (e.g. /notam), so /docs works there
 """
 from __future__ import annotations
 
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi.responses import FileResponse
 
 from .. import __version__
 from ..config import CACHE_DIR, DEFAULT_BASE_URL, RAW_DIR, AiswebConfig, load_dotenv
@@ -26,6 +30,7 @@ from ..domain.impact import SEVERITY_ORDER, Impact, leg_restrictions
 from ..domain.impact import RunwayNotam as DomainRunwayNotam
 from ..domain.ports import NotamSource
 from ..domain.qcode import extract_qcode
+from ..ingestion.airports import AirportDB
 from ..ingestion.aisweb import AiswebClient
 from ..pipelines.analyze import collect_runway_notams, split_coverage
 from ..reporting.formatting import describe
@@ -97,12 +102,93 @@ def _notam(rn: DomainRunwayNotam, icao: str) -> s.RunwayNotam:
         ml_probability=c.prob, confidence=_confidence(notam_confidence(rn)), note=rn.note, duplicates=rn.duplicates)
 
 
-def create_app(source: NotamSource | None = None, source_kind: str = "aisweb", api_key: str | None = None) -> FastAPI:
+def query_notams(source: NotamSource, airports: AirportDB, icao: list[str], start: datetime | None,
+                 end: datetime | None, categories: list[str] | None) -> s.NotamsResponse:
+    """Shared by GET /api/notams (with key) and GET /web/notams (web page)."""
+    codes = sorted({c.strip().upper() for item in icao for c in item.split(",") if c.strip()})
+    bad = [c for c in codes if len(c) != 4 or not c.isalpha()]
+    if bad or not codes:
+        raise HTTPException(422, f"Código ICAO inválido: {', '.join(bad) or '(vazio)'}.")
+    if len(codes) > MAX_AIRPORTS:
+        raise HTTPException(422, f"No máximo {MAX_AIRPORTS} aeroportos por consulta.")
+    now = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
+    w_start = _utc(start) if start else now
+    w_end = _utc(end) if end else w_start + timedelta(days=DEFAULT_DAYS)
+    if w_end <= w_start or w_end - w_start > timedelta(days=MAX_DAYS):
+        raise HTTPException(422, f"Janela inválida: 'to' deve ser depois de 'from' e no máximo {MAX_DAYS} dias.")
+    cats = _categories(categories)
+    query, outside = split_coverage(codes)
+    found, _, errors = collect_runway_notams(source, query, w_start, w_end, cats)
+    out = []
+    for code in codes:
+        ap = airports.by_icao.get(code)
+        info = dict(icao=code, name=ap.name if ap else None, timezone=ap.tz if ap else None)
+        if code in outside:
+            out.append(s.AirportNotams(**info, status="out_of_coverage", error="Fora da cobertura da AISWEB/DECEA."))
+        elif code in errors:
+            out.append(s.AirportNotams(**info, status="error", error=errors[code]))
+        else:
+            rns = sorted(found.get(code, []), key=lambda r: (SEVERITY_ORDER[r.severity], r.notam.start or w_start))
+            rwys = next((r.airport_runways for r in rns if r.airport_runways), None) or source.runways(code)
+            out.append(s.AirportNotams(
+                **info, status="ok", runways=[s.Runway(ident=r.ident, length_m=r.length, width_m=r.width) for r in rwys],
+                notams=[_notam(rn, code) for rn in rns]))
+    return s.NotamsResponse(generated_at=datetime.now(UTC), window=s.Period(start=w_start, end=w_end),
+                            categories=sorted(cats) if cats else ["all"], airports=out)
+
+
+def check_legs(source: NotamSource, req: s.RunwayCheckRequest) -> s.RunwayCheckResponse:
+    """Shared by POST /api/runway-check (with key) and POST /web/check (web page)."""
+    cats = _categories(req.categories)
+    margin = timedelta(minutes=req.margin_minutes)
+    times = [_utc(leg.time) for leg in req.legs]
+    w_start, w_end = min(times) - margin - timedelta(days=1), max(times) + margin + timedelta(days=1)
+    query, outside = split_coverage(leg.airport for leg in req.legs)
+    found, _, errors = collect_runway_notams(source, query, w_start, w_end, cats)
+    published: dict[str, list[str] | None] = {}
+    results = []
+    for leg, t in zip(req.legs, times):
+        base = dict(id=leg.id, airport=leg.airport, operation=leg.operation, time=t)
+        if leg.airport in outside or leg.airport in errors:
+            status = "out_of_coverage" if leg.airport in outside else "error"
+            results.append(s.LegResult(**base, status=status,
+                                       error=errors.get(leg.airport, "Fora da cobertura da AISWEB/DECEA."),
+                                       restricted=False, no_runway=False))
+            continue
+        rns = found.get(leg.airport, [])
+        side = OPERATION_SIDE[leg.operation]
+        hits, open_rwys, no_runway = leg_restrictions(rns, side, t - margin, t + margin)
+        if not hits:  # nothing closed: every published runway is open
+            if leg.airport not in published:
+                rwys = next((r.airport_runways for r in rns if r.airport_runways), None) or source.runways(leg.airport)
+                published[leg.airport] = [r.ident for r in rwys] or None
+            open_rwys = published[leg.airport]
+        impacts = [Impact(None, side, leg.airport, t, rn, w, open_rwys, no_runway) for rn, w in hits]
+        notams_out = [s.LegNotam(
+            id=f"{leg.airport}|{i.rn.notam.number}", number=i.rn.notam.number, category=i.rn.cls.primary,
+            description=describe(i.rn), severity=i.severity, runways=i.rn.cls.runways, closure=_closure(i.rn),
+            active_periods=_periods(i.windows), confidence=_confidence(impact_confidence(i))) for i in impacts]
+        worst = min((i.severity for i in impacts), key=SEVERITY_ORDER.get, default=None)
+        results.append(s.LegResult(**base, status="ok", restricted=bool(impacts), severity=worst,
+                                   no_runway=no_runway, open_runways=open_rwys, notams=notams_out))
+    return s.RunwayCheckResponse(generated_at=datetime.now(UTC), margin_minutes=req.margin_minutes,
+                                 categories=sorted(cats) if cats else ["all"], legs=results)
+
+
+STATIC = Path(__file__).parent / "static"
+
+
+def create_app(source: NotamSource | None = None, source_kind: str = "aisweb", api_key: str | None = None,
+               airports: AirportDB | None = None, runs_db: str | Path | None = None,
+               reports_dir: str | Path | None = None) -> FastAPI:
     """source/api_key default to the environment (see module docstring); tests inject them."""
+    from .web import build_router
+
     if source is None:
         source, source_kind = default_source()
     if api_key is None:
         api_key = os.getenv("NOTAM_API_KEY", "").strip() or None
+    airports = airports or AirportDB.default()
 
     app = FastAPI(title="NOTAM Schedule API", version=__version__,
                   description="NOTAMs de pista (AISWEB/DECEA): fechamentos por aeroporto e checagem de voos.")
@@ -110,6 +196,10 @@ def create_app(source: NotamSource | None = None, source_kind: str = "aisweb", a
     def require_key(x_api_key: str | None = Header(None, description="Required when the server sets NOTAM_API_KEY")):
         if api_key and not (x_api_key and secrets.compare_digest(x_api_key, api_key)):
             raise HTTPException(401, "Chave de API ausente ou inválida (cabeçalho X-API-Key).")
+
+    @app.get("/", include_in_schema=False)
+    def index():
+        return FileResponse(STATIC / "index.html")
 
     @app.get("/api/health", response_model=s.Health, tags=["status"])
     def health():
@@ -129,36 +219,7 @@ def create_app(source: NotamSource | None = None, source_kind: str = "aisweb", a
         Airports outside DECEA coverage or whose query failed come back with status out_of_coverage/error:
         that means there is NO DATA for them, not that they have no restriction.
         """
-        codes = sorted({c.strip().upper() for item in icao for c in item.split(",") if c.strip()})
-        bad = [c for c in codes if len(c) != 4 or not c.isalpha()]
-        if bad or not codes:
-            raise HTTPException(422, f"Código ICAO inválido: {', '.join(bad) or '(vazio)'}.")
-        if len(codes) > MAX_AIRPORTS:
-            raise HTTPException(422, f"No máximo {MAX_AIRPORTS} aeroportos por consulta.")
-        now = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
-        w_start = _utc(start) if start else now
-        w_end = _utc(end) if end else w_start + timedelta(days=DEFAULT_DAYS)
-        if w_end <= w_start or w_end - w_start > timedelta(days=MAX_DAYS):
-            raise HTTPException(422, f"Janela inválida: 'to' deve ser depois de 'from' e no máximo {MAX_DAYS} dias.")
-        cats = _categories(categories)
-        query, outside = split_coverage(codes)
-        found, _, errors = collect_runway_notams(source, query, w_start, w_end, cats)
-        airports = []
-        for code in codes:
-            if code in outside:
-                airports.append(s.AirportNotams(icao=code, status="out_of_coverage",
-                                                error="Fora da cobertura da AISWEB/DECEA."))
-            elif code in errors:
-                airports.append(s.AirportNotams(icao=code, status="error", error=errors[code]))
-            else:
-                rns = sorted(found.get(code, []), key=lambda r: (SEVERITY_ORDER[r.severity], r.notam.start or w_start))
-                rwys = next((r.airport_runways for r in rns if r.airport_runways), None) or source.runways(code)
-                airports.append(s.AirportNotams(
-                    icao=code, status="ok", runways=[s.Runway(ident=r.ident, length_m=r.length, width_m=r.width)
-                                                     for r in rwys],
-                    notams=[_notam(rn, code) for rn in rns]))
-        return s.NotamsResponse(generated_at=datetime.now(UTC), window=s.Period(start=w_start, end=w_end),
-                                categories=sorted(cats) if cats else ["all"], airports=airports)
+        return query_notams(source, airports, icao, start, end, categories)
 
     @app.post("/api/runway-check", response_model=s.RunwayCheckResponse, tags=["notams"],
               dependencies=[Depends(require_key)])
@@ -169,31 +230,8 @@ def create_app(source: NotamSource | None = None, source_kind: str = "aisweb", a
         runways published in ROTAER are closed (then `severity` is CRITICAL even if each NOTAM alone is not).
         A landing-only closure does not restrict departures, and vice versa.
         """
-        cats = _categories(req.categories)
-        margin = timedelta(minutes=req.margin_minutes)
-        times = [_utc(leg.time) for leg in req.legs]
-        w_start, w_end = min(times) - margin - timedelta(days=1), max(times) + margin + timedelta(days=1)
-        query, outside = split_coverage(leg.airport for leg in req.legs)
-        found, _, errors = collect_runway_notams(source, query, w_start, w_end, cats)
-        results = []
-        for leg, t in zip(req.legs, times):
-            base = dict(id=leg.id, airport=leg.airport, operation=leg.operation, time=t)
-            if leg.airport in outside or leg.airport in errors:
-                status = "out_of_coverage" if leg.airport in outside else "error"
-                results.append(s.LegResult(**base, status=status, error=errors.get(leg.airport, "Fora da cobertura da AISWEB/DECEA."),
-                                           restricted=False, no_runway=False))
-                continue
-            side = OPERATION_SIDE[leg.operation]
-            hits, open_rwys, no_runway = leg_restrictions(found.get(leg.airport, []), side, t - margin, t + margin)
-            impacts = [Impact(None, side, leg.airport, t, rn, w, open_rwys, no_runway) for rn, w in hits]
-            notams_out = [s.LegNotam(
-                id=f"{leg.airport}|{i.rn.notam.number}", number=i.rn.notam.number, category=i.rn.cls.primary,
-                description=describe(i.rn), severity=i.severity, runways=i.rn.cls.runways, closure=_closure(i.rn),
-                active_periods=_periods(i.windows), confidence=_confidence(impact_confidence(i))) for i in impacts]
-            worst = min((i.severity for i in impacts), key=SEVERITY_ORDER.get, default=None)
-            results.append(s.LegResult(**base, status="ok", restricted=bool(impacts), severity=worst,
-                                       no_runway=no_runway, open_runways=open_rwys, notams=notams_out))
-        return s.RunwayCheckResponse(generated_at=datetime.now(UTC), margin_minutes=req.margin_minutes,
-                                     categories=sorted(cats) if cats else ["all"], legs=results)
+        return check_legs(source, req)
 
+    paths = {k: v for k, v in (("runs_db", runs_db), ("reports_dir", reports_dir)) if v is not None}
+    app.include_router(build_router(source, airports, **paths))
     return app

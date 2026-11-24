@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Identificador de NOTAM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f2f4f7; --surface: #ffffff; --surface-2: #f7f8fa; --surface-3: #eef1f5;
+    --text: #0f1720; --text-2: #4a5563; --muted: #7b8594;
+    --line: #e3e7ed; --grid: #eef1f5;
+    --accent: #0a4ea2; --accent-2: #e8f0fb; --accent-fg: #ffffff; --rain: #2a78d6;
+    --err-bg: #fde8e8; --err-fg: #8a1c1c;
+    --b-light: #e6f0fc; --b-light-fg: #3a6aa8;
+    --b-rain: #c9defa; --b-rain-fg: #0f4489;
+    --b-heavy: #1f5fbf; --b-heavy-fg: #ffffff;
+    --b-wet: #fff1d6; --b-wet-fg: #8a5300;
+    --b-closed: #fde2e2; --b-closed-fg: #9b1c1c; --b-ok-fg: #1f8a4c;
+    --chip: #eef1f5; --chip-fg: #334155;
+    --shadow: 0 1px 2px rgba(15, 23, 32, .04), 0 4px 16px rgba(15, 23, 32, .04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0d1117; --surface: #161b22; --surface-2: #1b212a; --surface-3: #222934;
+      --text: #eef1f5; --text-2: #b7c0cc; --muted: #8590a0;
+      --line: #2a313c; --grid: #222934;
+      --accent: #3987e5; --accent-2: #17273d; --accent-fg: #0d1117; --rain: #3987e5;
+      --err-bg: #3a1616; --err-fg: #f3a5a5;
+      --b-light: #18263a; --b-light-fg: #9cbde6; --b-rain: #1d3a5f; --b-rain-fg: #c4dcfa;
+      --b-heavy: #3987e5; --b-heavy-fg: #0d1117;
+      --b-wet: #3a2a0e; --b-wet-fg: #f5c46b;
+      --b-closed: #3b1a1a; --b-closed-fg: #f3a3a3; --b-ok-fg: #5ccf8c;
+      --chip: #222934; --chip-fg: #c8d0db;
+      --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0d1117; --surface: #161b22; --surface-2: #1b212a; --surface-3: #222934;
+    --text: #eef1f5; --text-2: #b7c0cc; --muted: #8590a0;
+    --line: #2a313c; --grid: #222934;
+    --accent: #3987e5; --accent-2: #17273d; --accent-fg: #0d1117; --rain: #3987e5;
+    --err-bg: #3a1616; --err-fg: #f3a5a5;
+    --b-light: #18263a; --b-light-fg: #9cbde6; --b-rain: #1d3a5f; --b-rain-fg: #c4dcfa;
+    --b-heavy: #3987e5; --b-heavy-fg: #0d1117;
+    --b-wet: #3a2a0e; --b-wet-fg: #f5c46b;
+      --b-closed: #3b1a1a; --b-closed-fg: #f3a3a3; --b-ok-fg: #5ccf8c;
+    --chip: #222934; --chip-fg: #c8d0db;
+    --shadow: none;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 Inter, system-ui, sans-serif; }
+  [hidden] { display: none !important; }
+  svg { flex: none; }
+
+  /* topo */
+  header { background: var(--surface); border-bottom: 1px solid var(--line); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  .brand { display: flex; align-items: center; gap: 12px; padding: 18px 0 14px; }
+  .logo { width: 38px; height: 38px; border-radius: 10px; background: var(--accent); color: var(--accent-fg); display: grid; place-items: center; }
+  .brand h1 { font-size: 1.15rem; margin: 0; letter-spacing: -.01em; }
+  .brand p { margin: 0; color: var(--muted); font-size: .82rem; }
+  nav { display: flex; gap: 4px; }
+  nav button { background: none; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--text-2); font: inherit; font-weight: 500; padding: 10px 12px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+  nav button:hover { color: var(--text); }
+  nav button.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+  main.wrap { padding: 24px 16px 56px; }
+  .panel { display: grid; gap: 18px; }
+
+  /* etapas */
+  .step { display: flex; align-items: center; gap: 10px; margin: 6px 0 -6px; }
+  .step span { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-2); color: var(--accent); font-size: .78rem; font-weight: 700; display: grid; place-items: center; }
+  .step h2 { font-size: 1rem; margin: 0; }
+  .step small { color: var(--muted); font-size: .82rem; margin-left: auto; }
+
+  /* blocos */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+  .card-head { display: flex; gap: 12px 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .card-head h3 { font-size: .95rem; margin: 0; }
+  .card-head p { margin: 2px 0 0; color: var(--muted); font-size: .82rem; }
+  .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .pad { padding: 16px 18px; }
+  .lead { margin: 0 0 14px; color: var(--text-2); font-size: .9rem; max-width: 720px; }
+
+  /* botoes */
+  button.primary, .ghost { font: inherit; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+  button.primary { border: 0; background: var(--accent); color: var(--accent-fg); font-weight: 600; padding: 9px 18px; }
+  .ghost { background: var(--surface); color: var(--text); border: 1px solid var(--line); font-weight: 500; padding: 8px 14px; }
+  .ghost:hover { background: var(--surface-2); }
+  button:disabled { opacity: .6; cursor: wait; }
+  .seg { display: inline-flex; background: var(--surface-3); border-radius: 10px; padding: 3px; gap: 2px; }
+  .seg button { background: none; border: 0; color: var(--text-2); font: inherit; font-weight: 500; font-size: .9rem; padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+  .seg button.on { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(15, 23, 32, .12); }
+  .seg-label { color: var(--muted); font-size: .8rem; margin-right: -4px; }
+  .base-pick { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
+
+  /* envio da malha */
+  .drop { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; border: 1.5px dashed var(--line); border-radius: 12px; padding: 26px 16px; background: var(--surface-2); color: var(--text-2); cursor: pointer; transition: border-color .15s, background .15s; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-2); }
+  .drop b { color: var(--text); font-weight: 600; }
+  .drop small { color: var(--muted); }
+  .drop svg { color: var(--accent); margin-bottom: 4px; }
+  .file-input { display: none; }
+  .filebar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--surface-2); }
+  .filebar .ico { width: 36px; height: 36px; border-radius: 9px; background: var(--accent-2); color: var(--accent); display: grid; place-items: center; }
+  .filebar .name { flex: 1; min-width: 160px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .filebar .name small { display: block; color: var(--muted); font-weight: 400; font-size: .8rem; }
+  .filebar label { cursor: pointer; }
+
+  /* resumo */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow); }
+  .tile .k { color: var(--muted); font-size: .78rem; font-weight: 500; }
+  .tile .v { font-size: 1.6rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; margin-top: 4px; }
+  .tile .v small { font-size: .85rem; font-weight: 500; color: var(--muted); margin-left: 4px; letter-spacing: 0; }
+  .tile.main { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  .tile.main .k, .tile.main .v small { color: inherit; opacity: .8; }
+  .tile .period { font-size: .95rem; font-weight: 600; margin-top: 6px; }
+
+  /* bases da malha */
+  .bases { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .base .card-head { padding: 12px 16px; }
+  .base h3 small, .muted { color: var(--muted); font-weight: 500; }
+  .count { font-size: .78rem; color: var(--text-2); background: var(--chip); border-radius: 999px; padding: 2px 10px; font-weight: 600; }
+  .legs { padding: 12px 16px 14px; display: grid; gap: 10px; }
+  .leg-row { display: grid; grid-template-columns: 84px 1fr; gap: 10px; align-items: start; }
+  .leg-row .lbl { font-size: .8rem; color: var(--muted); padding-top: 3px; }
+  .leg-row .lbl b { display: block; color: var(--text); font-size: .85rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--chip); color: var(--chip-fg); border-radius: 7px; padding: 3px 8px; font-size: .8rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  /* avisos */
+  .err, .warn { display: flex; gap: 10px; align-items: flex-start; padding: 11px 14px; border-radius: 10px; font-size: .9rem; }
+  .err { background: var(--err-bg); color: var(--err-fg); }
+  .warn { background: var(--b-wet); color: var(--b-wet-fg); font-size: .85rem; }
+  .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 34px 18px; color: var(--text-2); }
+  .empty svg { color: var(--muted); }
+  .loading { padding: 18px; color: var(--muted); font-size: .9rem; }
+
+  /* tabelas */
+  .scroll { overflow-x: auto; }
+  .scroll.tall { max-height: min(70vh, 640px); }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: .9rem; }
+  th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  th:first-child, td:first-child { padding-left: 18px; }
+  th:last-child, td:last-child { padding-right: 18px; text-align: right; }
+  th { position: sticky; top: 0; z-index: 1; background: var(--surface-2); color: var(--muted); font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:not(.day):hover td { background: var(--surface-2); }
+  tr.rain td { background: color-mix(in srgb, var(--rain) 8%, transparent); }
+  tr.rain td:first-child { box-shadow: inset 3px 0 var(--rain); }
+  tr.margin td { color: var(--muted); }
+  tr.day td, tr.day td:last-child { background: var(--surface); color: var(--text); font-weight: 600; font-size: .8rem; text-align: left; padding-top: 14px; border-bottom: 1px solid var(--line); }
+  tr.day td::first-letter { text-transform: uppercase; }
+  td.tags { white-space: normal; min-width: 330px; }
+  td.time { font-weight: 600; }
+  td.flt { font-weight: 600; }
+  td.sub { color: var(--text-2); }
+  td.sub b { color: var(--text); font-weight: 500; margin-right: 6px; }
+  .tag { display: inline-block; white-space: nowrap; padding: 2px 8px; margin: 1px 4px 1px 0; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+  .tag.drizzle { background: var(--chip); color: var(--text-2); font-weight: 500; }
+  .tag.light { background: var(--b-light); color: var(--b-light-fg); }
+  .tag.rain  { background: var(--b-rain);  color: var(--b-rain-fg); }
+  .tag.heavy { background: var(--b-heavy); color: var(--b-heavy-fg); }
+  .tag.wet   { background: var(--b-wet);   color: var(--b-wet-fg); }
+  .tag.closed { background: var(--b-closed); color: var(--b-closed-fg); }
+  tr.closed td:first-child { box-shadow: inset 3px 0 0 var(--b-closed-fg); }
+  .tag.leg   { background: var(--chip);    color: var(--chip-fg); margin-right: 6px; }
+
+  details > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; padding: 13px 18px; color: var(--text-2); font-size: .9rem; font-weight: 500; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary svg { transition: transform .15s; }
+  details[open] > summary svg { transform: rotate(90deg); }
+  details[open] > summary { border-bottom: 1px solid var(--line); }
+
+  /* ---- identificador de NOTAM ---- */
+  .form { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .field > span { color: var(--muted); font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .field input, .field select { font: inherit; font-size: .92rem; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; min-width: 0; }
+  .field input:focus-visible, .field select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .field.grow { flex: 1 1 220px; }
+  .field input[type=number] { width: 90px; }
+  .hint { color: var(--muted); font-size: .82rem; margin-top: 10px; }
+  .ap { padding: 0; overflow: hidden; }
+  .ap .card-head { padding: 16px 18px 12px; }
+  .rwys { display: flex; gap: 6px; flex-wrap: wrap; }
+  .nt { border-top: 1px solid var(--line); padding: 14px 18px; display: grid; gap: 8px; }
+  .nt-top { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+  .nt-top b { font-size: 1rem; margin-right: 4px; }
+  .nt-desc { font-weight: 500; }
+  .nt-meta { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; font-size: .86rem; color: var(--text-2); margin: 0; }
+  .nt-meta dt { color: var(--muted); }
+  .nt-meta dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  .nt details { font-size: .86rem; color: var(--text-2); }
+  .nt details summary { cursor: pointer; color: var(--accent); font-weight: 500; }
+  .nt pre { white-space: pre-wrap; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .82rem; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin: 8px 0 0; }
+  .nt ul { margin: 6px 0 0; padding-left: 18px; }
+  .tag.sev-CRITICAL { background: var(--b-closed); color: var(--b-closed-fg); }
+  .tag.sev-HIGH { background: var(--b-wet); color: var(--b-wet-fg); }
+  .tag.sev-MEDIUM, .tag.sev-LOW { background: var(--b-light); color: var(--b-light-fg); }
+  .tag.conf { background: var(--chip); color: var(--chip-fg); }
+  .verdict { display: flex; gap: 14px; align-items: center; padding: 18px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); }
+  .verdict .big { font-size: 1.25rem; font-weight: 700; }
+  .verdict .small { color: var(--text-2); font-size: .9rem; margin-top: 2px; }
+  .verdict.ok { border-left: 5px solid var(--b-ok-fg); }
+  .verdict.warn { border-left: 5px solid var(--b-wet-fg); }
+  .verdict.bad { border-left: 5px solid var(--b-closed-fg); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  a.ghost { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .opts { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; margin-top: 14px; }
+  td.nowrap { white-space: nowrap; }
+
+  @media (max-width: 640px) {
+    .card-head .controls { width: 100%; }
+    .leg-row { grid-template-columns: 1fr; gap: 4px; }
+    .step small { display: none; }
+    .tiles { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .tile { padding: 10px 12px; }
+    .tile .k { font-size: .7rem; }
+    .tile .v { font-size: 1.3rem; }
+    .tile .v small { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h6l-5 4 2 7-6-4-6 4 2-7-5-4h6z"/></svg></div>
+      <div>
+        <h1>Identificador de NOTAM</h1>
+        <p>Pistas e aeródromos fechados por NOTAM · AISWEB/DECEA</p>
+      </div>
+    </div>
+    <nav id="tabs">
+      <button data-tab="cons" class="on">Consulta por aeroporto</button>
+      <button data-tab="check">Checar horário</button>
+      <button data-tab="malha">Enviar malha</button>
+      <button data-tab="nov">Novidades</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- ===== consulta por aeroporto ===== -->
+  <div class="panel" id="tab-cons">
+    <section class="card pad">
+      <form class="form" id="cons-form">
+        <label class="field grow"><span>Aeroportos (ICAO)</span><input id="cons-icao" value="SBSV, SBBE" autocomplete="off" required></label>
+        <label class="field"><span>De</span><input type="date" id="cons-from" required></label>
+        <label class="field"><span>Até</span><input type="date" id="cons-to" required></label>
+        <label class="field"><span>Mostrar</span>
+          <select id="cons-cats"><option value="">Pista e aeródromo fechados</option><option value="all">Todas as restrições de pista</option></select></label>
+        <button class="primary" id="cons-btn">Consultar</button>
+      </form>
+      <p class="hint">Separe os aeroportos por vírgula. Horários dos NOTAMs em UTC, com a hora local do aeroporto ao lado.</p>
+    </section>
+    <div id="cons-out" class="panel"></div>
+  </div>
+
+  <!-- ===== checar horário ===== -->
+  <div class="panel" id="tab-check" hidden>
+    <section class="card pad">
+      <form class="form" id="check-form">
+        <label class="field"><span>Aeroporto (ICAO)</span><input id="check-icao" value="SBSV" maxlength="4" size="6" autocomplete="off" required></label>
+        <label class="field"><span>Data</span><input type="date" id="check-date" required></label>
+        <label class="field"><span>Hora UTC</span><input type="time" id="check-time" value="12:00" required></label>
+        <div class="field"><span>Operação</span><div class="seg" id="check-op">
+          <button type="button" data-op="departure" class="on">Decolagem</button><button type="button" data-op="arrival">Pouso</button></div></div>
+        <label class="field"><span>Margem (min)</span><input type="number" id="check-margin" value="0" min="0" max="360"></label>
+        <button class="primary" id="check-btn">Checar</button>
+      </form>
+      <p class="hint">Margem 0 = só o instante informado. Com margem, vale qualquer fechamento entre a hora menos e mais a margem.</p>
+    </section>
+    <div id="check-out" class="panel"></div>
+  </div>
+
+  <!-- ===== enviar malha ===== -->
+  <div class="panel" id="tab-malha" hidden>
+    <section class="card pad">
+      <p class="lead">Envie a malha de voos (SSIM .xlsx ou .csv). Cada voo é cruzado com os NOTAMs dos aeroportos de origem e destino, e o resultado fica guardado para a aba Novidades.</p>
+      <input type="file" id="malha" class="file-input" accept=".xlsx,.xlsm,.csv">
+      <label class="drop" id="drop" for="malha">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M20 16v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3"/></svg>
+        <b>Arraste a malha aqui ou clique para escolher</b>
+        <small>.csv ou .xlsx, até 20 MB</small>
+      </label>
+      <div class="filebar" id="filebar" hidden>
+        <div class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></div>
+        <div class="name"><span id="malha-name"></span><small id="malha-size"></small></div>
+        <label class="ghost" for="malha">Trocar malha</label>
+      </div>
+      <div class="opts">
+        <label class="field"><span>Margem antes (min)</span><input type="number" id="m-before" value="60" min="0" max="360"></label>
+        <label class="field"><span>Margem depois (min)</span><input type="number" id="m-after" value="60" min="0" max="360"></label>
+        <label class="field"><span>Voos de</span><input type="date" id="m-from"></label>
+        <label class="field"><span>até</span><input type="date" id="m-to"></label>
+        <label class="field"><span>Mostrar</span>
+          <select id="m-cats"><option value="">Pista e aeródromo fechados</option><option value="all">Todas as restrições de pista</option></select></label>
+        <button class="primary" id="m-btn" disabled>Analisar malha</button>
+      </div>
+      <p class="hint">Sem datas, analisa a malha inteira. A primeira análise consulta cada aeroporto na AISWEB e pode levar 1 a 2 minutos.</p>
+    </section>
+    <div id="malha-out" class="panel"></div>
+  </div>
+
+  <!-- ===== novidades ===== -->
+  <div class="panel" id="tab-nov" hidden>
+    <section class="card pad">
+      <form class="form" id="nov-form">
+        <label class="field grow"><span>Análise</span><select id="nov-run"></select></label>
+        <button class="primary" id="nov-btn">Atualizar</button>
+      </form>
+      <p class="hint">Compara cada análise de malha com a anterior: impactos novos, encerrados e com severidade ou horário alterados.</p>
+    </section>
+    <div id="nov-out" class="panel"></div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids.filter(k => k !== null && k !== undefined && k !== false)); return n; };
+const svg = d => { const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("width", 18); s.setAttribute("height", 18);
+  s.setAttribute("fill", "none"); s.setAttribute("stroke", "currentColor"); s.setAttribute("stroke-width", 2);
+  s.setAttribute("stroke-linecap", "round"); s.setAttribute("stroke-linejoin", "round");
+  s.innerHTML = d; return s; };
+const ICON = {
+  alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>',
+  ok: '<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',
+  block: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+  pdf: '<path d="M12 4v12M7 11l5 5 5-5"/><path d="M5 20h14"/>',
+};
+const pad2 = n => String(n).padStart(2, "0");
+const isoDate = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const fmtUtc = iso => { const d = new Date(iso); return `${pad2(d.getUTCDate())}/${pad2(d.getUTCMonth() + 1)} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`; };
+const fmtHm = iso => { const d = new Date(iso); return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`; };
+const fmtLocal = (iso, tz) => { if (!tz) return ""; try {
+  return new Date(iso).toLocaleString("pt-BR", { timeZone: tz, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).replace(",", "");
+} catch { return ""; } };
+const WD = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+const fmtDate = iso => { const [y, m, d] = iso.slice(0, 10).split("-"); return `${d}/${m}/${y}`; };
+const wdUtc = iso => WD[new Date(iso).getUTCDay()];
+const plural = (n, w, p) => `${n} ${n === 1 ? w : (p || w + "s")}`;
+const grid = (headers, rows) => el("div", { className: "scroll" }, el("table", {},
+  el("thead", {}, el("tr", {}, ...headers.map(t => el("th", { textContent: t })))),
+  el("tbody", {}, ...rows)));
+const td = (text, cls) => el("td", { textContent: text ?? "—", className: cls || "" });
+const errBox = msg => el("div", { className: "err" }, svg(ICON.alert), el("span", { textContent: msg }));
+const warnBox = msg => el("div", { className: "warn" }, svg(ICON.alert), el("span", { textContent: msg }));
+const emptyBox = (icon, msg) => el("div", { className: "empty" }, svg(icon), el("span", { textContent: msg }));
+const loading = msg => el("div", { className: "loading", textContent: msg });
+const show = (node, ...kids) => { node.replaceChildren(...kids); };
+const tag = (cls, text, title) => el("span", { className: `tag ${cls}`, textContent: text, title: title || "" });
+
+const SEV_PT = { CRITICAL: "Crítico", HIGH: "Alto", MEDIUM: "Médio", LOW: "Baixo" };
+const OPS_PT = { both: "pouso e decolagem", landing: "só pouso", takeoff: "só decolagem" };
+const sevTag = s => s ? tag(`sev-${s}`, SEV_PT[s] || s) : null;
+const closureTag = c => !c ? null : c.type === "conditional"
+  ? tag("wet", "Condicional · PPR", "Operação possível mediante coordenação prévia")
+  : tag("closed", "Fechamento total");
+const confTag = c => c ? tag("conf", `Confiabilidade ${c.level.toLowerCase()} · ${c.score}`, c.reasons.join("\n")) : null;
+
+async function api(path, opts) {
+  let r;
+  try { r = await fetch(path, opts); } catch { throw new Error("Não foi possível falar com o servidor. Confira a conexão e tente de novo."); }
+  let body = null;
+  try { body = await r.json(); } catch { /* resposta sem JSON */ }
+  if (!r.ok) {
+    const d = body && body.detail;
+    throw new Error(typeof d === "string" ? d : Array.isArray(d) ? d.map(x => x.msg).join("; ") : `Erro ${r.status} no servidor.`);
+  }
+  return body;
+}
+
+// ---------- abas ----------
+for (const b of $("tabs").querySelectorAll("button")) b.onclick = () => {
+  for (const o of $("tabs").querySelectorAll("button")) {
+    o.classList.toggle("on", o === b);
+    $("tab-" + o.dataset.tab).hidden = o !== b;
+  }
+  if (b.dataset.tab === "nov") loadChanges();
+};
+
+// ---------- consulta por aeroporto ----------
+const today = new Date();
+$("cons-from").value = isoDate(today);
+$("cons-to").value = isoDate(addDays(today, 15));
+$("check-date").value = isoDate(today);
+show($("cons-out"), emptyBox(ICON.search, "Informe os aeroportos e o período e clique em Consultar."));
+
+function periodsText(periods, tz, limit = 8) {
+  const items = periods.slice(0, limit).map(p => {
+    const local = tz ? ` (local ${fmtLocal(p.start, tz).slice(-5)}–${fmtLocal(p.end, tz).slice(-5)})` : "";
+    return `${wdUtc(p.start)} ${fmtUtc(p.start)}–${fmtHm(p.end)} UTC${local}`;
+  });
+  if (periods.length > limit) items.push(`… e mais ${periods.length - limit}`);
+  return items;
+}
+
+function notamItem(n, tz) {
+  const validity = `${n.valid_from ? fmtUtc(n.valid_from) : "?"} → ${n.permanent ? "PERM" : n.valid_to ? fmtUtc(n.valid_to) : "?"}${n.valid_to_estimated ? " (estimado)" : ""} UTC`;
+  const ops = n.closure ? OPS_PT[n.closure.operations] : null;
+  const periods = periodsText(n.active_periods, tz);
+  const meta = el("dl", { className: "nt-meta" },
+    el("dt", { textContent: "Vigência" }), el("dd", { textContent: validity }),
+    el("dt", { textContent: "Período (D)" }), el("dd", { textContent: n.schedule || "contínuo" },
+      n.schedule_understood ? null : el("b", { textContent: " · não interpretado: considerado ativo o tempo todo" })),
+    ...(ops ? [el("dt", { textContent: "Fecha" }), el("dd", { textContent: ops })] : []),
+    ...(n.closure && n.closure.exception ? [el("dt", { textContent: "Exceto" }), el("dd", { textContent: n.closure.exception })] : []),
+    el("dt", { textContent: "Ativo" }), el("dd", { textContent: periods.length ? periods.join(" · ") : "fora do período consultado" }));
+  return el("div", { className: "nt" },
+    el("div", { className: "nt-top" }, el("b", { textContent: n.number }), sevTag(n.severity), closureTag(n.closure),
+      tag("conf", n.category_label), confTag(n.confidence)),
+    el("div", { className: "nt-desc", textContent: n.description }),
+    meta,
+    el("details", {}, el("summary", { textContent: "Texto do NOTAM e confiabilidade" }),
+      el("pre", { textContent: n.text }),
+      el("ul", {}, ...n.confidence.reasons.map(r => el("li", { textContent: r }))),
+      n.note ? el("p", { textContent: n.note }) : null));
+}
+
+function airportCard(a) {
+  const title = el("h3", {}, `${a.icao} `, el("small", { textContent: a.name || "" }));
+  const right = a.status === "ok"
+    ? el("div", { className: "rwys" }, ...a.runways.map(r => el("span", { className: "chip", textContent: r.length_m ? `${r.ident} · ${r.length_m} m` : r.ident })))
+    : null;
+  const kids = [el("div", { className: "card-head" }, el("div", {}, title,
+    el("p", { textContent: a.status === "ok" ? plural(a.notams.length, "NOTAM de pista", "NOTAMs de pista") + " no período" : "" })), right)];
+  if (a.status === "out_of_coverage") kids.push(el("div", { className: "pad" }, warnBox("Fora da cobertura da AISWEB/DECEA: sem dados de NOTAM para este aeroporto.")));
+  else if (a.status === "error") kids.push(el("div", { className: "pad" }, errBox(`Sem dados de NOTAM agora (${a.error}). Isso não significa que não há restrição.`)));
+  else if (!a.notams.length) kids.push(el("div", { className: "pad" }, emptyBox(ICON.ok, "Nenhum NOTAM de pista no período.")));
+  else kids.push(...a.notams.map(n => notamItem(n, a.timezone)));
+  return el("section", { className: "card ap" }, ...kids);
+}
+
+$("cons-form").onsubmit = async e => {
+  e.preventDefault();
+  const btn = $("cons-btn"), out = $("cons-out");
+  const q = new URLSearchParams({ icao: $("cons-icao").value, from: `${$("cons-from").value}T00:00:00Z`, to: `${$("cons-to").value}T23:59:00Z` });
+  if ($("cons-cats").value) q.set("categories", $("cons-cats").value);
+  btn.disabled = true; btn.textContent = "Consultando…";
+  show(out, loading("Consultando a AISWEB…"));
+  try {
+    const r = await api(`web/notams?${q}`);
+    show(out, ...r.airports.map(airportCard));
+  } catch (err) { show(out, errBox(err.message)); }
+  finally { btn.disabled = false; btn.textContent = "Consultar"; }
+};
+
+// ---------- checar horário ----------
+let checkOp = "departure";
+for (const b of $("check-op").querySelectorAll("button")) b.onclick = () => {
+  checkOp = b.dataset.op;
+  for (const o of $("check-op").children) o.classList.toggle("on", o === b);
+};
+show($("check-out"), emptyBox(ICON.search, "Informe aeroporto, data e hora UTC para saber se há pista disponível."));
+
+$("check-form").onsubmit = async e => {
+  e.preventDefault();
+  const btn = $("check-btn"), out = $("check-out");
+  const icao = $("check-icao").value.trim().toUpperCase();
+  const time = `${$("check-date").value}T${$("check-time").value}:00Z`;
+  btn.disabled = true; btn.textContent = "Checando…";
+  show(out, loading("Consultando a AISWEB…"));
+  try {
+    const r = await api("web/check", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ legs: [{ airport: icao, operation: checkOp, time }], margin_minutes: Number($("check-margin").value) || 0 }) });
+    const leg = r.legs[0];
+    const op = checkOp === "departure" ? "decolagem" : "pouso";
+    const when = `${icao} · ${op} em ${fmtUtc(leg.time)} UTC`;
+    let verdict;
+    if (leg.status !== "ok") verdict = el("div", { className: "verdict warn" }, svg(ICON.alert),
+      el("div", {}, el("div", { className: "big", textContent: "Sem dados de NOTAM" }),
+        el("div", { className: "small", textContent: `${when} · ${leg.error || ""}` })));
+    else if (leg.no_runway) verdict = el("div", { className: "verdict bad" }, svg(ICON.block),
+      el("div", {}, el("div", { className: "big", textContent: "Sem pista disponível" }),
+        el("div", { className: "small", textContent: `${when} · todas as pistas fechadas por NOTAM` })));
+    else if (leg.restricted) verdict = el("div", { className: "verdict warn" }, svg(ICON.alert),
+      el("div", {}, el("div", { className: "big", textContent: `Pista disponível: ${(leg.open_runways || []).join(", ") || "verifique"}` }),
+        el("div", { className: "small", textContent: `${when} · há pista fechada por NOTAM` })));
+    else verdict = el("div", { className: "verdict ok" }, svg(ICON.ok),
+      el("div", {}, el("div", { className: "big", textContent: leg.open_runways ? `Todas as pistas disponíveis: ${leg.open_runways.join(", ")}` : "Nenhum fechamento por NOTAM" }),
+        el("div", { className: "small", textContent: when })));
+    const list = leg.notams.length ? el("section", { className: "card ap" },
+      el("div", { className: "card-head" }, el("div", {}, el("h3", { textContent: "NOTAMs que se aplicam" }))),
+      ...leg.notams.map(n => el("div", { className: "nt" },
+        el("div", { className: "nt-top" }, el("b", { textContent: n.number }), sevTag(n.severity), closureTag(n.closure), confTag(n.confidence)),
+        el("div", { className: "nt-desc", textContent: n.description }),
+        el("dl", { className: "nt-meta" }, el("dt", { textContent: "Ativo" }),
+          el("dd", { textContent: n.active_periods.map(p => `${fmtUtc(p.start)}–${fmtHm(p.end)} UTC`).join(" · ") }))))) : null;
+    show(out, verdict, list);
+  } catch (err) { show(out, errBox(err.message)); }
+  finally { btn.disabled = false; btn.textContent = "Checar"; }
+};
+
+// ---------- enviar malha ----------
+let malha = null;
+const fmtSize = b => b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`;
+const drop = $("drop");
+for (const ev of ["dragenter", "dragover"]) drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); });
+for (const ev of ["dragleave", "drop"]) drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); });
+drop.addEventListener("drop", e => { if (e.dataTransfer.files[0]) pickMalha(e.dataTransfer.files[0]); });
+$("malha").onchange = () => { if ($("malha").files[0]) pickMalha($("malha").files[0]); $("malha").value = ""; };
+
+function pickMalha(file) {
+  malha = file;
+  $("drop").hidden = true; $("filebar").hidden = false;
+  $("malha-name").textContent = file.name; $("malha-size").textContent = fmtSize(file.size);
+  $("m-btn").disabled = false;
+  show($("malha-out"));
+}
+
+$("m-btn").onclick = async () => {
+  if (!malha) return;
+  const btn = $("m-btn"), out = $("malha-out"), file = malha;
+  const q = new URLSearchParams({ margin_before: $("m-before").value || 60, margin_after: $("m-after").value || 60 });
+  if ($("m-from").value) q.set("date_from", $("m-from").value);
+  if ($("m-to").value) q.set("date_to", $("m-to").value);
+  if ($("m-cats").value) q.set("categories", $("m-cats").value);
+  btn.disabled = true; btn.textContent = "Analisando…";
+  show(out, loading("Analisando a malha: consultando os NOTAMs de cada aeroporto na AISWEB…"));
+  try {
+    const r = await api(`web/schedule?${q}`, { method: "POST", body: file,
+      headers: { "content-type": "application/octet-stream", "x-filename": encodeURIComponent(file.name) } });
+    if (malha !== file) return;
+    show(out, ...scheduleView(r));
+  } catch (err) { show(out, errBox(err.message)); }
+  finally { btn.disabled = false; btn.textContent = "Analisar malha"; }
+};
+
+function tile(k, v, small, main) {
+  return el("div", { className: "tile" + (main ? " main" : "") }, el("div", { className: "k", textContent: k }),
+    el("div", { className: "v" }, String(v), small ? el("small", { textContent: small }) : null));
+}
+
+function scheduleView(r) {
+  const kids = [];
+  kids.push(el("div", { className: "tiles" },
+    tile("Voos analisados", r.flights, "voos", true),
+    tile("Voos impactados", r.impacted_flights, r.flights ? `${(100 * r.impacted_flights / r.flights).toFixed(1)}%` : ""),
+    tile("Voos críticos", r.critical_flights, "sem pista ou AD fechado"),
+    tile("Aeroportos sem dados", Object.keys(r.errors).length, "")));
+  for (const [icao, msg] of Object.entries(r.errors)) kids.push(errBox(`${icao}: sem dados de NOTAM (${msg}). Isso não significa que não há restrição.`));
+  if (r.out_of_coverage.length) kids.push(warnBox(`Fora da cobertura da AISWEB/DECEA (não consultados): ${r.out_of_coverage.join(", ")}.`));
+
+  const c = r.changes;
+  const changeText = !c.previous ? "Primeira análise registrada: a próxima mostra o que mudou."
+    : `Desde a análise anterior: ${c.counts.new} novos, ${c.counts.severity_changed} com severidade alterada, ${c.counts.window_changed} com horário alterado, ${c.counts.ended} encerrados.`;
+  kids.push(el("section", { className: "card pad" },
+    el("div", { className: "card-head", style: "padding:0" },
+      el("div", {}, el("h3", { textContent: `Análise #${r.run_id} · ${r.schedule_file}` }),
+        el("p", { textContent: `Voos de ${fmtDate(r.period.start)} a ${fmtDate(r.period.end)} · horários da malha em ${r.time_basis.toUpperCase()}` })),
+      el("div", { className: "actions" },
+        el("a", { className: "ghost", href: r.downloads.xlsx }, svg(ICON.pdf), "Excel"),
+        el("a", { className: "ghost", href: r.downloads.csv }, svg(ICON.pdf), "CSV"))),
+    el("p", { className: "hint", textContent: changeText })));
+
+  const days = r.by_day.filter(d => d.impacted);
+  if (days.length) kids.push(el("section", { className: "card" },
+    el("div", { className: "card-head" }, el("div", {}, el("h3", { textContent: "Por dia" }))),
+    grid(["Data", "Voos", "Impactados", "Críticos", "Aeroportos"], days.map(d => el("tr", {},
+      td(`${fmtDate(d.date)} ${WD[new Date(d.date + "T12:00:00Z").getUTCDay()]}`, "nowrap"), td(d.flights), td(d.impacted), td(d.critical),
+      td(d.airports.join(", ")))))));
+
+  if (!r.impacts.length) kids.push(el("section", { className: "card" }, emptyBox(ICON.ok, "Nenhum voo da malha cruza com NOTAM de pista fechada.")));
+  else {
+    const shown = r.impacts.slice(0, 300);
+    kids.push(el("section", { className: "card" },
+      el("div", { className: "card-head" }, el("div", {}, el("h3", { textContent: "Voos impactados" }),
+        el("p", { textContent: r.impacts_total > shown.length ? `Mostrando ${shown.length} de ${r.impacts_total} (os mais severos). Todos estão no Excel.` : `${r.impacts_total} ocorrências voo × NOTAM` }))),
+      grid(["Severidade", "Data", "Voo", "Trecho", "Operação", "Horário UTC", "NOTAM", "O que é", "Pistas abertas", "Confiab."],
+        shown.map(i => el("tr", { className: i.no_runway ? "closed" : "" },
+          el("td", {}, sevTag(i.severity)), td(fmtDate(i.date), "nowrap"), td(i.flight, "flt"), td(`${i.origin} → ${i.destination}`, "nowrap"),
+          td(`${i.operation === "departure" ? "Decolagem" : "Pouso"} ${i.airport}`, "nowrap"),
+          td(i.time ? `${fmtHm(i.time)}${i.timezone ? ` (${fmtLocal(i.time, i.timezone).slice(-5)} local)` : ""}` : "dia todo", "nowrap"),
+          td(i.notam, "nowrap"), td(i.description), td(i.no_runway ? "nenhuma" : (i.open_runways || []).join(", ") || "—"),
+          td(i.confidence.level))))));
+  }
+  return kids;
+}
+
+// ---------- novidades ----------
+const KIND_TAG = { "NOVO": "closed", "SEVERIDADE MUDOU": "wet", "JANELA MUDOU": "light", "ENCERRADO": "conf" };
+const runLabel = run => `#${run.id} · ${new Date(run.started_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).replace(",", "")} · ${run.schedule_file || "malha"}`;
+const win = w => w ? `${fmtUtc(w.start)}–${fmtHm(w.end)}` : "—";
+
+async function loadChanges(runId) {
+  const out = $("nov-out");
+  show(out, loading("Carregando…"));
+  try {
+    const r = await api(runId ? `web/changes?run_id=${runId}` : "web/changes");
+    const sel = $("nov-run");
+    sel.replaceChildren(...r.runs.map(run => el("option", { value: run.id, textContent: runLabel(run), selected: r.run && run.id === r.run.id })));
+    if (!r.run) return show(out, el("section", { className: "card" }, emptyBox(ICON.search, "Nenhuma análise ainda. Envie uma malha na aba Enviar malha.")));
+    const head = el("section", { className: "card pad" },
+      el("h3", { textContent: `Análise ${runLabel(r.run)}` }),
+      el("p", { className: "hint", textContent: r.previous ? `Comparada com ${runLabel(r.previous)}` : "Primeira análise registrada: não há anterior para comparar." }));
+    const tiles = el("div", { className: "tiles" }, tile("Novos", r.counts.new, "impactos", true), tile("Severidade mudou", r.counts.severity_changed),
+      tile("Horário mudou", r.counts.window_changed), tile("Encerrados", r.counts.ended));
+    if (!r.previous) return show(out, head);
+    if (!r.changes.length) return show(out, head, tiles, el("section", { className: "card" }, emptyBox(ICON.ok, "Nada mudou em relação à análise anterior.")));
+    show(out, head, tiles, el("section", { className: "card" }, grid(
+      ["Mudança", "Data", "Voo", "Trecho", "Operação", "NOTAM", "Severidade", "Horário do NOTAM (UTC)"],
+      r.changes.map(ch => el("tr", {},
+        el("td", {}, tag(KIND_TAG[ch.kind] || "conf", ch.kind.toLowerCase())), td(fmtDate(ch.date), "nowrap"), td(ch.flight, "flt"),
+        td(`${ch.origin} → ${ch.destination}`, "nowrap"), td(`${ch.operation === "departure" ? "Decolagem" : "Pouso"} ${ch.airport}`, "nowrap"),
+        td(ch.notam, "nowrap"), td([ch.severity_before, ch.severity_after].filter(Boolean).map(x => SEV_PT[x] || x).join(" → ")),
+        td(ch.kind === "JANELA MUDOU" ? `${win(ch.window_before)} → ${win(ch.window_after)}` : win(ch.window_after || ch.window_before), "nowrap"))))));
+  } catch (err) { show(out, errBox(err.message)); }
+}
+$("nov-form").onsubmit = e => { e.preventDefault(); loadChanges($("nov-run").value); };
+</script>
+</body>
+</html>

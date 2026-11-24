@@ -51,6 +51,7 @@ class Change:
 class ChangeSet:
     previous_run: dict | None          # metadata of the run compared against (None = first run)
     changes: list[Change] = field(default_factory=list)
+    run_id: int | None = None          # id of the run these changes belong to, once recorded
 
     def count(self, kind: str) -> int:
         return sum(c.kind == kind for c in self.changes)

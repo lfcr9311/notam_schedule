@@ -67,6 +67,8 @@ class RunwayNotam(BaseModel):
 
 class AirportNotams(BaseModel):
     icao: str = Field(pattern=ICAO_PATTERN)
+    name: str | None = None
+    timezone: str | None = Field(None, description="IANA time zone of the airport, for local times", examples=["America/Bahia"])
     status: AirportStatus = Field(description="error/out_of_coverage mean NO DATA, never 'no restriction'")
     error: str | None = None
     runways: list[Runway] = Field(default_factory=list, description="Runways published in ROTAER")
@@ -121,7 +123,7 @@ class LegResult(BaseModel):
     restricted: bool = Field(description="At least one closure applies to this operation in the window")
     severity: str | None = Field(None, description="Worst severity for the leg (CRITICAL when no runway is left)")
     no_runway: bool = Field(description="At some moment of the window every published runway is closed")
-    open_runways: list[str] | None = Field(None, description="Runways with no closure in the window; null = unknown")
+    open_runways: list[str] | None = Field(None, description="Runways with no closure in the window; null = runways unknown (no ROTAER)")
     notams: list[LegNotam] = Field(default_factory=list)
 
 
@@ -136,3 +138,96 @@ class Health(BaseModel):
     status: Literal["ok"]
     version: str
     source: Literal["aisweb", "offline"]
+
+
+# ---------------------------------------------------------------- web page (public /web/* endpoints)
+class ImpactRow(BaseModel):
+    date: str = Field(description="Flight date (ISO)")
+    flight: str
+    origin: str
+    destination: str
+    operation: Operation
+    airport: str
+    timezone: str
+    time: datetime | None = Field(None, description="STD/STA in UTC; null = flight without time (whole day)")
+    severity: str
+    category: str
+    description: str
+    notam: str
+    closure: Closure | None = None
+    open_runways: list[str] | None = None
+    no_runway: bool
+    confidence: Confidence
+
+
+class DaySummary(BaseModel):
+    date: str
+    flights: int
+    impacted: int
+    critical: int
+    airports: list[str]
+
+
+class ChangeRow(BaseModel):
+    kind: Literal["NOVO", "SEVERIDADE MUDOU", "JANELA MUDOU", "ENCERRADO"]
+    date: str
+    flight: str
+    origin: str
+    destination: str
+    operation: Operation
+    airport: str
+    notam: str
+    category: str
+    severity_before: str | None = None
+    severity_after: str | None = None
+    window_before: Period | None = None
+    window_after: Period | None = None
+
+
+class RunInfo(BaseModel):
+    id: int
+    started_at: datetime
+    schedule_file: str | None = None
+    period_start: str | None = None
+    period_end: str | None = None
+    flights: int | None = None
+    impacts: int | None = None
+
+
+class ChangeCounts(BaseModel):
+    new: int = 0
+    severity_changed: int = 0
+    window_changed: int = 0
+    ended: int = 0
+
+
+class ChangesResponse(BaseModel):
+    run: RunInfo | None = Field(None, description="Run whose changes are shown (default: the latest)")
+    previous: RunInfo | None = Field(None, description="Run it is compared with; null = first run, nothing to compare")
+    counts: ChangeCounts
+    changes: list[ChangeRow]
+    runs: list[RunInfo] = Field(description="Most recent runs, to pick another one")
+
+
+class Downloads(BaseModel):
+    xlsx: str
+    csv: str
+
+
+class ScheduleResult(BaseModel):
+    run_id: int
+    schedule_file: str
+    time_basis: str = Field(description="utc / local (with ' (auto)' when detected)")
+    period: Period
+    categories: list[str]
+    flights: int
+    impacted_flights: int
+    critical_flights: int
+    by_day: list[DaySummary]
+    impacts: list[ImpactRow] = Field(description="Flight x NOTAM impacts (at most 2000, most severe first)")
+    impacts_total: int
+    errors: dict[str, str] = Field(description="Airports with no NOTAM data (query failed)")
+    out_of_coverage: list[str]
+    changes: ChangesResponse
+    downloads: Downloads
+

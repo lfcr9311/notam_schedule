@@ -1,11 +1,14 @@
-# API de NOTAMs de pista. Sobe na mesma rede do Caddy que o notam-tw, para o notam-tw chamar
-# http://notam-schedule:8000 por dentro da rede. A porta fica só no localhost do servidor.
+# Identificador de NOTAM (página em /notam/ pelo Caddy do fortran) e API de NOTAMs de pista.
+# Mesma rede do Caddy que o notam-tw, que chama http://notam-schedule:8000 por dentro da rede.
+# A porta no host fica só no localhost do servidor (diagnóstico com curl).
 services:
   notam-schedule:
     build: .
     container_name: notam-schedule
     restart: unless-stopped
     env_file: .env                  # AISWEB_API_KEY, AISWEB_API_PASS, NOTAM_API_KEY (não vão pro git)
+    environment:
+      NOTAM_ROOT_PATH: /notam       # o Caddy do fortran publica a página em /notam/ (tira o prefixo)
     volumes:
       - ./data:/app/data            # cache, histórico bruto da AISWEB e execuções sobrevivem ao redeploy
     ports:

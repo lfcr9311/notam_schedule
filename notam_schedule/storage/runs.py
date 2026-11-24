@@ -50,6 +50,23 @@ class RunStore:
         self.db.commit()
         return run_id
 
+    def runs(self, limit: int = 20) -> list[dict]:
+        """Most recent runs first (metadata only)."""
+        return [dict(r) for r in self.db.execute("SELECT * FROM run ORDER BY id DESC LIMIT ?", (limit,))]
+
+    def get(self, run_id: int) -> dict | None:
+        row = self.db.execute("SELECT * FROM run WHERE id = ?", (run_id,)).fetchone()
+        return dict(row) if row else None
+
+    def previous(self, run_id: int) -> dict | None:
+        """The run recorded just before `run_id`."""
+        row = self.db.execute("SELECT * FROM run WHERE id < ? ORDER BY id DESC LIMIT 1", (run_id,)).fetchone()
+        return dict(row) if row else None
+
+    def records(self, run_id: int) -> list[ImpactRecord]:
+        return [ImpactRecord(*(r[name] for name in RECORD_FIELDS))
+                for r in self.db.execute("SELECT * FROM impact WHERE run_id = ?", (run_id,))]
+
     def latest(self) -> tuple[dict, list[ImpactRecord]] | None:
         """Most recent run and its impacts, or None when nothing was recorded yet."""
         row = self.db.execute("SELECT * FROM run ORDER BY id DESC LIMIT 1").fetchone()

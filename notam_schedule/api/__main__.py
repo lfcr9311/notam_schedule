@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -33,7 +34,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     import uvicorn
     from .app import create_app
-    uvicorn.run(create_app(), host=a.host, port=a.port, proxy_headers=True, forwarded_allow_ips="*")
+    # NOTAM_ROOT_PATH: prefix the proxy strips (e.g. /notam), so /docs and links work behind it
+    uvicorn.run(create_app(), host=a.host, port=a.port, proxy_headers=True, forwarded_allow_ips="*",
+                root_path=os.getenv("NOTAM_ROOT_PATH", ""))
     return 0
 
 

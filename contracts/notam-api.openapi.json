@@ -217,6 +217,374 @@
           }
         }
       }
+    },
+    "/web/notams": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Notams",
+        "description": "Same as GET /api/notams, without key (used by the page).",
+        "operationId": "notams_web_notams_get",
+        "parameters": [
+          {
+            "name": "icao",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "title": "Icao"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "name": "categories",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Categories"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotamsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web/check": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Check",
+        "description": "Same as POST /api/runway-check, limited to a few legs (the page checks one moment at a time).",
+        "operationId": "check_web_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunwayCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunwayCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web/schedule": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Schedule",
+        "description": "Full schedule analysis, like the command line: Excel/CSV to download and the run kept in the history.",
+        "operationId": "schedule_web_schedule_post",
+        "parameters": [
+          {
+            "name": "margin_before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 360,
+              "minimum": 0,
+              "default": 60,
+              "title": "Margin Before"
+            }
+          },
+          {
+            "name": "margin_after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 360,
+              "minimum": 0,
+              "default": 60,
+              "title": "Margin After"
+            }
+          },
+          {
+            "name": "categories",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Categories"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First flight date (default: all)",
+              "title": "Date From"
+            },
+            "description": "First flight date (default: all)"
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last flight date (default: all)",
+              "title": "Date To"
+            },
+            "description": "Last flight date (default: all)"
+          },
+          {
+            "name": "x-filename",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "malha.xlsx",
+              "title": "X-Filename"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web/reports/{run_id}.{ext}": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Report",
+        "description": "Excel or CSV of an analysis sent through the page (the latest ones are kept).",
+        "operationId": "report_web_reports__run_id___ext__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "ext",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ext"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web/changes": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Changes",
+        "description": "What changed in a run compared with the one before it.",
+        "operationId": "changes_web_changes_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Default: the latest run",
+              "title": "Run Id"
+            },
+            "description": "Default: the latest run"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -227,6 +595,32 @@
             "type": "string",
             "pattern": "^[A-Z]{4}$",
             "title": "Icao"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone",
+            "description": "IANA time zone of the airport, for local times",
+            "examples": [
+              "America/Bahia"
+            ]
           },
           "status": {
             "type": "string",
@@ -271,6 +665,188 @@
           "status"
         ],
         "title": "AirportNotams"
+      },
+      "ChangeCounts": {
+        "properties": {
+          "new": {
+            "type": "integer",
+            "title": "New",
+            "default": 0
+          },
+          "severity_changed": {
+            "type": "integer",
+            "title": "Severity Changed",
+            "default": 0
+          },
+          "window_changed": {
+            "type": "integer",
+            "title": "Window Changed",
+            "default": 0
+          },
+          "ended": {
+            "type": "integer",
+            "title": "Ended",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "ChangeCounts"
+      },
+      "ChangeRow": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "NOVO",
+              "SEVERIDADE MUDOU",
+              "JANELA MUDOU",
+              "ENCERRADO"
+            ],
+            "title": "Kind"
+          },
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "flight": {
+            "type": "string",
+            "title": "Flight"
+          },
+          "origin": {
+            "type": "string",
+            "title": "Origin"
+          },
+          "destination": {
+            "type": "string",
+            "title": "Destination"
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "departure",
+              "arrival"
+            ],
+            "title": "Operation"
+          },
+          "airport": {
+            "type": "string",
+            "title": "Airport"
+          },
+          "notam": {
+            "type": "string",
+            "title": "Notam"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "severity_before": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity Before"
+          },
+          "severity_after": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity After"
+          },
+          "window_before": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Period"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "window_after": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Period"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "date",
+          "flight",
+          "origin",
+          "destination",
+          "operation",
+          "airport",
+          "notam",
+          "category"
+        ],
+        "title": "ChangeRow"
+      },
+      "ChangesResponse": {
+        "properties": {
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Run whose changes are shown (default: the latest)"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Run it is compared with; null = first run, nothing to compare"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/ChangeCounts"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/ChangeRow"
+            },
+            "type": "array",
+            "title": "Changes"
+          },
+          "runs": {
+            "items": {
+              "$ref": "#/components/schemas/RunInfo"
+            },
+            "type": "array",
+            "title": "Runs",
+            "description": "Most recent runs, to pick another one"
+          }
+        },
+        "type": "object",
+        "required": [
+          "counts",
+          "changes",
+          "runs"
+        ],
+        "title": "ChangesResponse"
       },
       "Closure": {
         "properties": {
@@ -347,6 +923,60 @@
         ],
         "title": "Confidence"
       },
+      "DaySummary": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "flights": {
+            "type": "integer",
+            "title": "Flights"
+          },
+          "impacted": {
+            "type": "integer",
+            "title": "Impacted"
+          },
+          "critical": {
+            "type": "integer",
+            "title": "Critical"
+          },
+          "airports": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Airports"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "flights",
+          "impacted",
+          "critical",
+          "airports"
+        ],
+        "title": "DaySummary"
+      },
+      "Downloads": {
+        "properties": {
+          "xlsx": {
+            "type": "string",
+            "title": "Xlsx"
+          },
+          "csv": {
+            "type": "string",
+            "title": "Csv"
+          }
+        },
+        "type": "object",
+        "required": [
+          "xlsx",
+          "csv"
+        ],
+        "title": "Downloads"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -387,6 +1017,120 @@
           "source"
         ],
         "title": "Health"
+      },
+      "ImpactRow": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date",
+            "description": "Flight date (ISO)"
+          },
+          "flight": {
+            "type": "string",
+            "title": "Flight"
+          },
+          "origin": {
+            "type": "string",
+            "title": "Origin"
+          },
+          "destination": {
+            "type": "string",
+            "title": "Destination"
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "departure",
+              "arrival"
+            ],
+            "title": "Operation"
+          },
+          "airport": {
+            "type": "string",
+            "title": "Airport"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time",
+            "description": "STD/STA in UTC; null = flight without time (whole day)"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "notam": {
+            "type": "string",
+            "title": "Notam"
+          },
+          "closure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Closure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "open_runways": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Runways"
+          },
+          "no_runway": {
+            "type": "boolean",
+            "title": "No Runway"
+          },
+          "confidence": {
+            "$ref": "#/components/schemas/Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "flight",
+          "origin",
+          "destination",
+          "operation",
+          "airport",
+          "timezone",
+          "severity",
+          "category",
+          "description",
+          "notam",
+          "no_runway",
+          "confidence"
+        ],
+        "title": "ImpactRow"
       },
       "Leg": {
         "properties": {
@@ -583,7 +1327,7 @@
               }
             ],
             "title": "Open Runways",
-            "description": "Runways with no closure in the window; null = unknown"
+            "description": "Runways with no closure in the window; null = runways unknown (no ROTAER)"
           },
           "notams": {
             "items": {
@@ -657,6 +1401,80 @@
           "end"
         ],
         "title": "Period"
+      },
+      "RunInfo": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "schedule_file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schedule File"
+          },
+          "period_start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period Start"
+          },
+          "period_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period End"
+          },
+          "flights": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flights"
+          },
+          "impacts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impacts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "started_at"
+        ],
+        "title": "RunInfo"
       },
       "Runway": {
         "properties": {
@@ -976,6 +1794,104 @@
           "confidence"
         ],
         "title": "RunwayNotam"
+      },
+      "ScheduleResult": {
+        "properties": {
+          "run_id": {
+            "type": "integer",
+            "title": "Run Id"
+          },
+          "schedule_file": {
+            "type": "string",
+            "title": "Schedule File"
+          },
+          "time_basis": {
+            "type": "string",
+            "title": "Time Basis",
+            "description": "utc / local (with ' (auto)' when detected)"
+          },
+          "period": {
+            "$ref": "#/components/schemas/Period"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories"
+          },
+          "flights": {
+            "type": "integer",
+            "title": "Flights"
+          },
+          "impacted_flights": {
+            "type": "integer",
+            "title": "Impacted Flights"
+          },
+          "critical_flights": {
+            "type": "integer",
+            "title": "Critical Flights"
+          },
+          "by_day": {
+            "items": {
+              "$ref": "#/components/schemas/DaySummary"
+            },
+            "type": "array",
+            "title": "By Day"
+          },
+          "impacts": {
+            "items": {
+              "$ref": "#/components/schemas/ImpactRow"
+            },
+            "type": "array",
+            "title": "Impacts",
+            "description": "Flight x NOTAM impacts (at most 2000, most severe first)"
+          },
+          "impacts_total": {
+            "type": "integer",
+            "title": "Impacts Total"
+          },
+          "errors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Errors",
+            "description": "Airports with no NOTAM data (query failed)"
+          },
+          "out_of_coverage": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Out Of Coverage"
+          },
+          "changes": {
+            "$ref": "#/components/schemas/ChangesResponse"
+          },
+          "downloads": {
+            "$ref": "#/components/schemas/Downloads"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "schedule_file",
+          "time_basis",
+          "period",
+          "categories",
+          "flights",
+          "impacted_flights",
+          "critical_flights",
+          "by_day",
+          "impacts",
+          "impacts_total",
+          "errors",
+          "out_of_coverage",
+          "changes",
+          "downloads"
+        ],
+        "title": "ScheduleResult"
       },
       "ValidationError": {
         "properties": {
