@@ -1,0 +1,385 @@
+<?xml version="1.0" encoding="UTF-8"?><aisweb>
+        <notam id="99d586fc-829e-4d7d-8d4f23b27c9b6ba2" total="7" updatedat="2026-11-11 16:03:00">
+
+              
+                
+                       
+                
+                
+                            
+                
+                
+                                    
+                    <item id="12780938">
+                        <id>12780938</id>
+                        <icaoairport_id>SBKP</icaoairport_id>
+                        <cod>QFTAS</cod>
+                        <status>ACTIVE</status>
+                        <cat>AGA</cat>
+                        <dist>N</dist>
+                        <tp>NOTAMN</tp>
+                        <dt>2026-08-25 10:44:00</dt>
+                        <n>F4756/26</n>
+                        <number>4756</number>
+                        <ref_id/>
+                        <ref/>
+                        <ref_n/>
+                        <ref_year/>
+                        <loc>SBKP</loc>
+                        <b>2608251044</b>
+                        <c>2611232359</c>
+                        <d/>
+                        <e>TRANSMISSOMETRO RWY 33 U/S</e>
+                        <f/>
+                        <g/>
+                        <nof>SBRJ</nof>
+                        <s>F</s>
+                        <geo>2300S04708W005</geo>
+                        <geo_url>https://aisweb.decea.gov.br/geo/notam/?id=12780938</geo_url>
+                        <aero>Viracopos</aero>
+                        <cidade>Campinas</cidade>
+                        <uf>SP</uf>
+                        <origem>SDIA E0C23E99</origem>
+                        <fir>SBBS</fir>
+                        <year>2026</year>
+                        <traffic>I</traffic>
+                        <lower>000</lower>
+                        <upper>999</upper>
+                        <state>ACTIVE</state>
+                        <purpose>BO</purpose>
+                        <scope>A</scope>
+                        <seqnumber>4756</seqnumber>
+                        <ref_s>0</ref_s>
+                   </item>
+                
+              
+                
+                       
+                
+                
+                            
+                
+                
+                                    
+                    <item id="12804906">
+                        <id>12804906</id>
+                        <icaoairport_id>SBKP</icaoairport_id>
+                        <cod>QOBCE</cod>
+                        <status>ACTIVE</status>
+                        <cat>OTR</cat>
+                        <dist>N</dist>
+                        <tp>NOTAMN</tp>
+                        <dt>2026-09-02 21:37:00</dt>
+                        <n>F5117/26</n>
+                        <number>5117</number>
+                        <ref_id/>
+                        <ref/>
+                        <ref_n/>
+                        <ref_year/>
+                        <loc>SBKP</loc>
+                        <b>2609022137</b>
+                        <c>2612012359</c>
+                        <d/>
+                        <e>OBST MONTADO 1 (GUINDASTE) LGTD COORD 225644S/0470236W HGT 82M (269FT) ALT OTP 812M (2664FT) RAIO 50M E OBST MONTADO 2 (GUINDASTE) LGTD COORD 225646S/0470234W HGT 82M (269FT) ALT OTP 812M (2664FT) RAIO 50M</e>
+                        <f/>
+                        <g/>
+                        <nof>SBRJ</nof>
+                        <s>F</s>
+                        <geo>2300S04708W005</geo>
+                        <geo_url>https://aisweb.decea.gov.br/geo/notam/?id=12804906</geo_url>
+                        <aero>Viracopos</aero>
+                        <cidade>Campinas</cidade>
+                        <uf>SP</uf>
+                        <origem>SDIA A2CE2B30</origem>
+                        <fir>SBBS</fir>
+                        <year>2026</year>
+                        <traffic>IV</traffic>
+                        <lower>000</lower>
+                        <upper>999</upper>
+                        <state>ACTIVE</state>
+                        <purpose>M</purpose>
+                        <scope>AE</scope>
+                        <seqnumber>5117</seqnumber>
+                        <ref_s>0</ref_s>
+                   </item>
+                
+              
+                
+                       
+                
+                
+                            
+                
+                
+                                    
+                    <item id="12842708">
+                        <id>12842708</id>
+                        <icaoairport_id>SBKP</icaoairport_id>
+                        <cod>QOBCE</cod>
+                        <status>ACTIVE</status>
+                        <cat>OTR</cat>
+                        <dist>N</dist>
+                        <tp>NOTAMN</tp>
+                        <dt>2026-09-03 12:06:00</dt>
+                        <n>F5131/26</n>
+                        <number>5131</number>
+                        <ref_id/>
+                        <ref/>
+                        <ref_n/>
+                        <ref_year/>
+                        <loc>SBKP</loc>
+                        <b>2609031206</b>
+                        <c>2612020300</c>
+                        <d/>
+                        <e>OBST MONTADO (GRUA) LGTD COORD 225636S/0470255W HGT 79M (259FT) ALT OTP 812M (2664FT) RAIO 35M</e>
+                        <f/>
+                        <g/>
+                        <nof>SBRJ</nof>
+                        <s>F</s>
+                        <geo>2300S04708W005</geo>
+                        <geo_url>https://aisweb.decea.gov.br/geo/notam/?id=12842708</geo_url>
+                        <aero>Viracopos</aero>
+                        <cidade>Campinas</cidade>
+                        <uf>SP</uf>
+                        <origem>SDIA 694569F0</origem>
+                        <fir>SBBS</fir>
+                        <year>2026</year>
+                        <traffic>IV</traffic>
+                        <lower>000</lower>
+                        <upper>999</upper>
+                        <state>ACTIVE</state>
+                        <purpose>M</purpose>
+                        <scope>AE</scope>
+                        <seqnumber>5131</seqnumber>
+                        <ref_s>0</ref_s>
+                   </item>
+                
+              
+                
+                       
+                
+                
+                            
+                
+                
+                                    
+                    <item id="12969401">
+                        <id>12969401</id>
+                        <icaoairport_id>SBKP</icaoairport_id>
+                        <cod>QOBCE</cod>
+                        <status>ACTIVE</status>
+                        <cat>OTR</cat>
+                        <dist>N</dist>
+                        <tp>NOTAMN</tp>
+                        <dt>2026-09-08 21:38:00</dt>
+                        <n>F5314/26</n>
+                        <number>5314</number>
+                        <ref_id/>
+                        <ref/>
+                        <ref_n/>
+                        <ref_year/>
+                        <loc>SBKP</loc>
+                        <b>2609082138</b>
+                        <c>2612070300</c>
+                        <d/>
+                        <e>OBST MONTADO (GRUA) LGTD COORD 225638.37S0470255.03W HGT 104,88M (344FT) ALT OTP 841,38M (2760FT) RAIO 35,00M</e>
+                        <f/>
+                        <g/>
+                        <nof>SBRJ</nof>
+                        <s>F</s>
+                        <geo>2300S04708W001</geo>
+                        <geo_url>https://aisweb.decea.gov.br/geo/notam/?id=12969401</geo_url>
+                        <aero>Viracopos</aero>
+                        <cidade>Campinas</cidade>
+                        <uf>SP</uf>
+                        <origem>SDIA 0DF9D8C7</origem>
+                        <fir>SBBS</fir>
+                        <year>2026</year>
+                        <traffic>IV</traffic>
+                        <lower>000</lower>
+                        <upper>999</upper>
+                        <state>ACTIVE</state>
+                        <purpose>M</purpose>
+                        <scope>AE</scope>
+                        <seqnumber>5314</seqnumber>
+                        <ref_s>0</ref_s>
+                   </item>
+                
+              
+                
+                       
+                
+                
+                            
+                
+                
+                                    
+                    <item id="13102096">
+                        <id>13102096</id>
+                        <icaoairport_id>SBKP</icaoairport_id>
+                        <cod>QFALC</cod>
+                        <status>ACTIVE</status>
+                        <cat>AGA</cat>
+                        <dist>N</dist>
+                        <tp>NOTAMN</tp>
+                        <dt>2026-09-30 13:11:00</dt>
+                        <n>F5927/26</n>
+                        <number>5927</number>
+                        <ref_id/>
+                        <ref/>
+                        <ref_n/>
+                        <ref_year/>
+                        <loc>SBKP</loc>
+                        <b>2610060330</b>
+                        <c>2612300730</c>
+                        <d>OCT 06-09 14-17 20-22 24 28-30, NOV 04-06 11-14 18 19 25-28, DEC 02-05 10-12 16-18 30 0330-0730</d>
+                        <e>AD CLSD DEVIDO SER MAINT</e>
+                        <f/>
+                        <g/>
+                        <nof>SBRJ</nof>
+                        <s>F</s>
+                        <geo>2300S04708W005</geo>
+                        <geo_url>https://aisweb.decea.gov.br/geo/notam/?id=13102096</geo_url>
+                        <aero>Viracopos</aero>
+                        <cidade>Campinas</cidade>
+                        <uf>SP</uf>
+                        <origem>SDIA AC8B74BC</origem>
+                        <fir>SBBS</fir>
+                        <year>2026</year>
+                        <traffic>IV</traffic>
+                        <lower>000</lower>
+                        <upper>999</upper>
+                        <state>ACTIVE</state>
+                        <purpose>NBO</purpose>
+                        <scope>A</scope>
+                        <seqnumber>5927</seqnumber>
+                        <ref_s>0</ref_s>
+                   </item>
+                
+              
+                
+                       
+                
+                
+                            
+                
+                
+                                    
+                    <item id="13102100">
+                        <id>13102100</id>
+                        <icaoairport_id>SBKP</icaoairport_id>
+                        <cod>QXXXX</cod>
+                        <status>ACTIVE</status>
+                        <cat>OTR</cat>
+                        <dist>N</dist>
+                        <tp>NOTAMN</tp>
+                        <dt>2026-09-30 13:21:00</dt>
+                        <n>F5929/26</n>
+                        <number>5929</number>
+                        <ref_id/>
+                        <ref/>
+                        <ref_n/>
+                        <ref_year/>
+                        <loc>SBKP</loc>
+                        <b>2609301321</b>
+                        <c>2612232359</c>
+                        <d/>
+                        <e>SUP AIP (E-AIP) 016/26 CNL</e>
+                        <f/>
+                        <g/>
+                        <nof>SBRJ</nof>
+                        <s>F</s>
+                        <geo>2300S04708W005</geo>
+                        <geo_url>https://aisweb.decea.gov.br/geo/notam/?id=13102100</geo_url>
+                        <aero>Viracopos</aero>
+                        <cidade>Campinas</cidade>
+                        <uf>SP</uf>
+                        <origem>SDIA AC8B74BC</origem>
+                        <fir>SBBS</fir>
+                        <year>2026</year>
+                        <traffic>IV</traffic>
+                        <lower>000</lower>
+                        <upper>999</upper>
+                        <state>ACTIVE</state>
+                        <purpose>NBO</purpose>
+                        <scope>AE</scope>
+                        <seqnumber>5929</seqnumber>
+                        <ref_s>0</ref_s>
+                   </item>
+                
+              
+                
+                       
+                
+                 
+                    
+                    
+                    
+                
+                            
+                
+                
+                                    
+                    <item id="13270753">
+                        <id>13270753</id>
+                        <icaoairport_id>SBKP</icaoairport_id>
+                        <cod>QMNXX</cod>
+                        <status>ACTIVE</status>
+                        <cat>AGA</cat>
+                        <dist>N</dist>
+                        <tp>NOTAMR</tp>
+                        <dt>2026-11-04 18:02:00</dt>
+                        <n>F6597/26</n>
+                        <number>6597</number>
+                        <ref_id>13270514</ref_id>
+                        <ref>F6595/26</ref>
+                        <ref_n>6595</ref_n>
+                        <ref_year>2026</ref_year>
+                        <loc>SBKP</loc>
+                        <b>2611041802</b>
+                        <c>PERM</c>
+                        <d/>
+                        <e>PATIO MODIFICADO RESISTENCIA PARA: 
+APN 1 - PCR 190/F/B/X/T; 
+APN 2 - PCR 670/R/A/W/T; 
+APN 3 - PCR 850/R/A/W/T.  
+REF: AIP AD 2.8</e>
+                        <f/>
+                        <g/>
+                        <nof>SBRJ</nof>
+                        <s>F</s>
+                        <geo>2300S04708W005</geo>
+                        <geo_url>https://aisweb.decea.gov.br/geo/notam/?id=13270753</geo_url>
+                        <aero>Viracopos</aero>
+                        <cidade>Campinas</cidade>
+                        <uf>SP</uf>
+                        <origem>SDIA CC131988</origem>
+                        <fir>SBBS</fir>
+                        <year>2026</year>
+                        <traffic>IV</traffic>
+                        <lower>000</lower>
+                        <upper>999</upper>
+                        <state>ACTIVE</state>
+                        <purpose>NBO</purpose>
+                        <scope>A</scope>
+                        <seqnumber>6597</seqnumber>
+                        <ref_s>0</ref_s>
+                   </item>
+                
+            
+        </notam>
+    </aisweb>
+            
+
+            
+        
+
+
+        
+
+    
+
+    
+    
+
+

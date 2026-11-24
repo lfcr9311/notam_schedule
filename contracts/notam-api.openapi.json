@@ -1,0 +1,1022 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "NOTAM Schedule API",
+    "description": "NOTAMs de pista (AISWEB/DECEA): fechamentos por aeroporto e checagem de voos.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": [
+          "status"
+        ],
+        "summary": "Health",
+        "description": "Liveness check. Does not call the AISWEB.",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notams": {
+      "get": {
+        "tags": [
+          "notams"
+        ],
+        "summary": "Notams",
+        "description": "Runway NOTAMs active in the window, per airport, with closure type, periods and confidence.\n\nAirports outside DECEA coverage or whose query failed come back with status out_of_coverage/error:\nthat means there is NO DATA for them, not that they have no restriction.",
+        "operationId": "notams_api_notams_get",
+        "parameters": [
+          {
+            "name": "icao",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "One or more ICAO codes (repeat the parameter or use commas)",
+              "examples": [
+                "SBSV,SBBE"
+              ],
+              "title": "Icao"
+            },
+            "description": "One or more ICAO codes (repeat the parameter or use commas)"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Window start (UTC). Default: now",
+              "title": "From"
+            },
+            "description": "Window start (UTC). Default: now"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Window end (UTC). Default: start + 15 days",
+              "title": "To"
+            },
+            "description": "Window end (UTC). Default: start + 15 days"
+          },
+          {
+            "name": "categories",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Default: RUNWAY_CLOSED,AERODROME_CLOSED; 'all' = every category",
+              "title": "Categories"
+            },
+            "description": "Default: RUNWAY_CLOSED,AERODROME_CLOSED; 'all' = every category"
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Required when the server sets NOTAM_API_KEY",
+              "title": "X-Api-Key"
+            },
+            "description": "Required when the server sets NOTAM_API_KEY"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotamsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runway-check": {
+      "post": {
+        "tags": [
+          "notams"
+        ],
+        "summary": "Runway Check",
+        "description": "For each flight leg, the closures that apply to that operation within ±margin of its time.\n\nCombines every closure at the airport: `no_runway` is true when, at some moment of the window, all\nrunways published in ROTAER are closed (then `severity` is CRITICAL even if each NOTAM alone is not).\nA landing-only closure does not restrict departures, and vice versa.",
+        "operationId": "runway_check_api_runway_check_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Required when the server sets NOTAM_API_KEY",
+              "title": "X-Api-Key"
+            },
+            "description": "Required when the server sets NOTAM_API_KEY"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunwayCheckRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunwayCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AirportNotams": {
+        "properties": {
+          "icao": {
+            "type": "string",
+            "pattern": "^[A-Z]{4}$",
+            "title": "Icao"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "error",
+              "out_of_coverage"
+            ],
+            "title": "Status",
+            "description": "error/out_of_coverage mean NO DATA, never 'no restriction'"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "runways": {
+            "items": {
+              "$ref": "#/components/schemas/Runway"
+            },
+            "type": "array",
+            "title": "Runways",
+            "description": "Runways published in ROTAER"
+          },
+          "notams": {
+            "items": {
+              "$ref": "#/components/schemas/RunwayNotam"
+            },
+            "type": "array",
+            "title": "Notams"
+          }
+        },
+        "type": "object",
+        "required": [
+          "icao",
+          "status"
+        ],
+        "title": "AirportNotams"
+      },
+      "Closure": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "total",
+              "conditional"
+            ],
+            "title": "Type",
+            "description": "conditional = operations may be authorised with prior coordination / PPR"
+          },
+          "operations": {
+            "type": "string",
+            "enum": [
+              "both",
+              "landing",
+              "takeoff"
+            ],
+            "title": "Operations",
+            "description": "Operations the closure applies to"
+          },
+          "exception": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exception",
+            "description": "The EXC clause of the NOTAM, e.g. 'INT RWY 03/21'"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "operations"
+        ],
+        "title": "Closure"
+      },
+      "Confidence": {
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "ALTA",
+              "MÉDIA",
+              "BAIXA"
+            ],
+            "title": "Level"
+          },
+          "score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Score"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons",
+            "description": "What lowered (or supports) the score, in Portuguese"
+          }
+        },
+        "type": "object",
+        "required": [
+          "level",
+          "score",
+          "reasons"
+        ],
+        "title": "Confidence"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "aisweb",
+              "offline"
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "source"
+        ],
+        "title": "Health"
+      },
+      "Leg": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id",
+            "description": "Caller's identifier, echoed back (e.g. 'AZU4787-20261201-DEP')"
+          },
+          "airport": {
+            "type": "string",
+            "pattern": "^[A-Z]{4}$",
+            "title": "Airport",
+            "examples": [
+              "SBSV"
+            ]
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "departure",
+              "arrival"
+            ],
+            "title": "Operation"
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Time",
+            "description": "STD for departures, STA for arrivals. Without offset = UTC"
+          }
+        },
+        "type": "object",
+        "required": [
+          "airport",
+          "operation",
+          "time"
+        ],
+        "title": "Leg"
+      },
+      "LegNotam": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "runways": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Runways"
+          },
+          "closure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Closure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "active_periods": {
+            "items": {
+              "$ref": "#/components/schemas/Period"
+            },
+            "type": "array",
+            "title": "Active Periods",
+            "description": "Active periods overlapping the leg window"
+          },
+          "confidence": {
+            "$ref": "#/components/schemas/Confidence",
+            "description": "Confidence of this NOTAM for this leg (includes timing)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "category",
+          "description",
+          "severity",
+          "runways",
+          "active_periods",
+          "confidence"
+        ],
+        "title": "LegNotam"
+      },
+      "LegResult": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "airport": {
+            "type": "string",
+            "title": "Airport"
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "departure",
+              "arrival"
+            ],
+            "title": "Operation"
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "error",
+              "out_of_coverage"
+            ],
+            "title": "Status"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "restricted": {
+            "type": "boolean",
+            "title": "Restricted",
+            "description": "At least one closure applies to this operation in the window"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity",
+            "description": "Worst severity for the leg (CRITICAL when no runway is left)"
+          },
+          "no_runway": {
+            "type": "boolean",
+            "title": "No Runway",
+            "description": "At some moment of the window every published runway is closed"
+          },
+          "open_runways": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Runways",
+            "description": "Runways with no closure in the window; null = unknown"
+          },
+          "notams": {
+            "items": {
+              "$ref": "#/components/schemas/LegNotam"
+            },
+            "type": "array",
+            "title": "Notams"
+          }
+        },
+        "type": "object",
+        "required": [
+          "airport",
+          "operation",
+          "time",
+          "status",
+          "restricted",
+          "no_runway"
+        ],
+        "title": "LegResult"
+      },
+      "NotamsResponse": {
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "window": {
+            "$ref": "#/components/schemas/Period"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories"
+          },
+          "airports": {
+            "items": {
+              "$ref": "#/components/schemas/AirportNotams"
+            },
+            "type": "array",
+            "title": "Airports"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generated_at",
+          "window",
+          "categories",
+          "airports"
+        ],
+        "title": "NotamsResponse"
+      },
+      "Period": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "Period"
+      },
+      "Runway": {
+        "properties": {
+          "ident": {
+            "type": "string",
+            "title": "Ident",
+            "examples": [
+              "15/33"
+            ]
+          },
+          "length_m": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length M"
+          },
+          "width_m": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width M"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ident"
+        ],
+        "title": "Runway"
+      },
+      "RunwayCheckRequest": {
+        "properties": {
+          "legs": {
+            "items": {
+              "$ref": "#/components/schemas/Leg"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "minItems": 1,
+            "title": "Legs"
+          },
+          "margin_minutes": {
+            "type": "integer",
+            "maximum": 360.0,
+            "minimum": 0.0,
+            "title": "Margin Minutes",
+            "description": "Window before and after the leg time; 0 = only the leg time itself",
+            "default": 60
+          },
+          "categories": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categories",
+            "description": "Default: RUNWAY_CLOSED and AERODROME_CLOSED"
+          }
+        },
+        "type": "object",
+        "required": [
+          "legs"
+        ],
+        "title": "RunwayCheckRequest"
+      },
+      "RunwayCheckResponse": {
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "margin_minutes": {
+            "type": "integer",
+            "title": "Margin Minutes"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories"
+          },
+          "legs": {
+            "items": {
+              "$ref": "#/components/schemas/LegResult"
+            },
+            "type": "array",
+            "title": "Legs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generated_at",
+          "margin_minutes",
+          "categories",
+          "legs"
+        ],
+        "title": "RunwayCheckResponse"
+      },
+      "RunwayNotam": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Stable id: ICAO|number",
+            "examples": [
+              "SBSV|B2126/26"
+            ]
+          },
+          "number": {
+            "type": "string",
+            "title": "Number",
+            "examples": [
+              "B2126/26"
+            ]
+          },
+          "airport": {
+            "type": "string",
+            "pattern": "^[A-Z]{4}$",
+            "title": "Airport"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "examples": [
+              "RUNWAY_CLOSED"
+            ]
+          },
+          "category_label": {
+            "type": "string",
+            "title": "Category Label",
+            "examples": [
+              "Pista fechada"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Plain-language summary (Portuguese)"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "CRITICAL",
+              "HIGH",
+              "MEDIUM",
+              "LOW"
+            ],
+            "title": "Severity",
+            "description": "Severity of the NOTAM on its own"
+          },
+          "runways": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Runways",
+            "description": "Runways named in the NOTAM",
+            "examples": [
+              [
+                "17/35"
+              ]
+            ]
+          },
+          "closure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Closure"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Present for runway and aerodrome closures"
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From",
+            "description": "Item B"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To",
+            "description": "Item C; null when permanent"
+          },
+          "permanent": {
+            "type": "boolean",
+            "title": "Permanent"
+          },
+          "valid_to_estimated": {
+            "type": "boolean",
+            "title": "Valid To Estimated"
+          },
+          "schedule": {
+            "type": "string",
+            "title": "Schedule",
+            "description": "Item D as published (weekdays are UTC days)"
+          },
+          "schedule_understood": {
+            "type": "boolean",
+            "title": "Schedule Understood",
+            "description": "false: item D not parsed, NOTAM treated as active all the time"
+          },
+          "active_periods": {
+            "items": {
+              "$ref": "#/components/schemas/Period"
+            },
+            "type": "array",
+            "title": "Active Periods",
+            "description": "When the NOTAM is active inside the requested window"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Item E as published"
+          },
+          "qcode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qcode",
+            "examples": [
+              "MRLC"
+            ]
+          },
+          "detection": {
+            "type": "string",
+            "enum": [
+              "rules",
+              "ml",
+              "rules+ml"
+            ],
+            "title": "Detection"
+          },
+          "ml_probability": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ml Probability"
+          },
+          "confidence": {
+            "$ref": "#/components/schemas/Confidence"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          },
+          "duplicates": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Duplicates",
+            "description": "Same NOTAM published in another language"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "airport",
+          "category",
+          "category_label",
+          "description",
+          "severity",
+          "runways",
+          "permanent",
+          "valid_to_estimated",
+          "schedule",
+          "schedule_understood",
+          "active_periods",
+          "text",
+          "detection",
+          "confidence"
+        ],
+        "title": "RunwayNotam"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

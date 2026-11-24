@@ -1,0 +1,574 @@
+<?xml version="1.0" encoding="UTF-8"?><aisweb>
+      
+        
+          
+            
+
+            
+            
+            
+
+            
+            
+
+
+            
+            
+
+            
+            
+
+            
+            
+
+            
+            
+
+
+            
+            
+                
+                        
+                
+            
+
+              
+               <status>Active</status>
+               <dt>2026-07-30</dt>
+               <AeroCode>SBKP</AeroCode>
+               <ciad>SP0003</ciad>
+               <name><![CDATA[Viracopos]]></name>
+               <city><![CDATA[Campinas]]></city>
+               <uf>SP</uf>
+               <lat>-23.006944444444</lat>
+               <lng>-47.134444444444</lng>
+               <latRotaer>23 00 25S</latRotaer>
+               <lngRotaer>047 08 04W</lngRotaer>
+               <distance>14SSW</distance>
+               
+               
+               
+<org>
+  <name/>
+  <type/>
+  <military/>                           
+</org>
+               
+               <workinghour compl=""/>
+               <type>AD</type>
+               <typeUtil>PUB</typeUtil>
+               <typeOpr>VFR IFR</typeOpr>
+               <cat>INTL</cat>
+               <utc>-3</utc>
+               <altM>661.42</altM>
+               <altFt>2170</altFt>
+               <fir>SBBS</fir>
+               <jur>CRCEA-SE</jur>
+              
+              
+              
+
+<lights>
+	
+	
+  		<light compl="" descr="Luzes de obstáculo">L23</light>
+  	
+  		<light compl="" descr="Farol rotativo de aeródromo">L21</light>
+  	
+  		<light compl="" descr="Indicador de direção de vento iluminado">L26</light>
+  	
+  	
+</lights>
+               <runways count="1">
+                
+
+
+                    
+                    
+
+                    <runway compl="">
+                        <type>RWY</type>
+                        <ident>15/33</ident>
+                        <surface compl="">ASPH</surface>
+                        <length compl="">3240</length>
+                        <width compl="">45</width>
+                        <surface_c compl="">770/F/B/X/T</surface_c>
+
+                        
+                        
+                        
+
+<lights>
+	
+	
+  		<light compl="" descr="Luzes ao longo das laterais da pista de alta intensidade, de 60 em 60 metros.">L14A</light>
+  	
+  	
+</lights>
+
+                        
+                        
+
+<lights>
+	
+	
+  		<light compl="" descr="Luzes (azuis) de pista de táxi, indicando sua trajetória.">L15</light>
+  	
+  	
+</lights>
+
+                        
+                        
+                        
+
+<lights>
+	
+	
+  	
+</lights>
+
+                        
+                        <thr compl="">
+                          <ident>15</ident>
+                          
+                          
+                          
+
+<lights>
+	
+	
+  		<light compl="" descr="MALSR - Sistema de luzes para aproximação de intensidade média com luzes indicadoras de alinhamento de pista">L2A</light>
+  	
+  		<light compl="" descr="PAPI">L9</light>
+  	
+  		<light compl="" descr="Luzes de cabeceira de alta intensidade (verde no início e vermelha no fim da pista).">L12A</light>
+  	
+  	
+</lights>
+                        </thr>
+                        
+                        <thr compl="">
+                          <ident>33</ident>
+                          
+                          
+                          
+
+<lights>
+	
+	
+  		<light compl="" descr="PAPI">L9</light>
+  	
+  		<light compl="" descr="Luzes de cabeceira de alta intensidade (verde no início e vermelha no fim da pista).">L12A</light>
+  	
+  	
+</lights>
+                        </thr>
+                        
+                    </runway>
+                  
+               </runways>
+
+              
+
+              <services>
+
+              
+              
+
+              
+              
+
+
+              
+              
+              
+              
+              
+                
+                  
+                
+              
+              
+              
+              <service type="AirportSuppliesService">
+                  <fuel>
+                        
+                  </fuel>
+              </service>
+              
+              
+              <service type="AircraftGroundService">
+                <ser>S1</ser>
+              </service>
+
+              
+              <service type="AirportGroundService">
+                  <rffs>
+                    <cat/>
+                  </rffs>
+              </service>
+
+               
+               
+
+                
+                
+                
+
+
+                <service compl="5,8" type="COM">
+                      <type>Torre</type>
+                      <callsign>Campinas</callsign>
+                      <freqs>
+                        
+                        
+                        
+                        
+
+                        <freq compl="">118.250</freq>
+                        
+                      </freqs>
+                       
+                       
+                       
+<org>
+  <name/>
+  <type/>
+  <military/>                           
+</org>
+                       
+                </service>
+              
+
+                
+                
+                
+
+
+                <service compl="8" type="COM">
+                      <type>Solo</type>
+                      <callsign>Campinas</callsign>
+                      <freqs>
+                        
+                        
+                        
+                        
+
+                        <freq compl="">121.900</freq>
+                        
+                      </freqs>
+                       
+                       
+                       
+<org>
+  <name/>
+  <type/>
+  <military/>                           
+</org>
+                       
+                </service>
+              
+
+                
+                
+                
+
+
+                <service compl="" type="COM">
+                      <type>Tráfego</type>
+                      <callsign>Campinas</callsign>
+                      <freqs>
+                        
+                        
+                        
+                        
+
+                        <freq compl="6">121.100</freq>
+                        
+                      </freqs>
+                       
+                       
+                       
+<org>
+  <name/>
+  <type/>
+  <military/>                           
+</org>
+                       
+                </service>
+              
+
+                
+                
+                
+
+
+                <service compl="3" type="COM">
+                      <type>ATIS</type>
+                      <callsign>Campinas</callsign>
+                      <freqs>
+                        
+                        
+                        
+                        
+
+                        <freq compl="">127.825</freq>
+                        
+                      </freqs>
+                       
+                       
+                       
+<org>
+  <name/>
+  <type/>
+  <military/>                           
+</org>
+                       
+                </service>
+              
+
+               
+               
+                <service type="NAV">
+                      <type>ILS</type>
+                      <cat/>
+                      <thr>15</thr>
+                      <ident>IKP</ident>
+                      <freq>110.3</freq>
+                      <lat>2301.10S</lat>
+                      <lng>04707.10W</lng>
+                       
+                       
+                       
+<org>
+  <name/>
+  <type/>
+  <military/>                           
+</org>
+                       
+                </service>
+              
+
+              
+               
+                <service type="MET">
+                      <contact/>
+                      <type>Civil</type>
+                      <products>1,2,3,4,5,6,7,8,9</products>
+                      <selfservice>1</selfservice>
+                       
+                       
+                       
+<org>
+  <name/>
+  <type/>
+  <military/>                           
+</org>
+                       
+                </service>
+              
+
+              
+               
+                <service type="AIS">
+                      <contact> (19) 3725-5050</contact>
+                      <type>Civil</type>
+                      <selfservice>0</selfservice>
+                       
+                       
+                       
+<org>
+  <name>DECEA</name>
+  <type>ORG</type>
+  <military>JOINT</military>                           
+</org>
+                       
+                </service>
+              
+
+              </services>
+
+
+               
+               
+               <rmk count="17">
+                  
+                    
+                      <rmkText cod="2.6"><![CDATA[Acionamento do Recovery Kit AVBL H24 via TEL: (19) 97111-8500 / (19) 3795-7920 / (19) 3795-7921 (Central de Acionamento e Monitoramento Eletrônico de Segurança - CAMES).]]></rmkText>
+                    
+                  
+                    
+                      <rmkText cod="2.6"><![CDATA[Definição do prazo máximo para que o explorador da aeronave inoperante inicie a remoção, baseado nos recursos necessários:<br>
+Recurso Interno: 02:00 horas<br>
+Recurso Externo (até 50km): 04:00 horas<br>
+Recurso Externo Especializado: 12:00 horas<br>
+Obs.: O tempo efetivo de remoção poderá variar em função da liberação da autoridade competente, das condições da aeronave, de sua posição na área de movimento, das condições meteorológicas e de outros fatores operacionais aplicáveis.<br>
+Os prazos previstos poderão ser cumulativos, caso seja necessário o acionamento de recursos pertencentes a diferentes categorias.]]></rmkText>
+                    
+                  
+                    
+                      <rmkText cod="2.8"><![CDATA[Compulsória a utilização de “push-back” nas saídas dos pátios, exceções tratadas com AD.]]></rmkText>
+                    
+                  
+                    
+                      <rmkText cod="2.8"><![CDATA[PRB INBD à posição de estacionamento sem sinalização do balizador.]]></rmkText>
+                    
+                  
+                    
+                      <rmkText cod="2.8"><![CDATA[Acionamento de ENG de ACFT do pátio 2, somente na faixa central
+de TAX e a partir das PSN 1 e 2]]></rmkText>
+                    
+                  
+                    
+                      <rmkText cod="2.10"><![CDATA[OBS OBST prédio (Torre LGTD) DIST 1373M THR 15, AZM 194DEG,
+ELEV 223FT]]></rmkText>
+                    
+                  
+                    
+                      <rmkText cod="2.20"><![CDATA[Proibido vôos de treinamento diariamente nos horários 0800-1300, 1400-1800 e 1900-0200 UTC.]]></rmkText>
+                    
+                  
+                    
+                      <rmkText cod="2.20"><![CDATA[Não AUTH apresentação de Plano de Voo por radiotelefionia]]></rmkText>
+                    
+                  
+                    
+                      <rmkText cod="2.22"><![CDATA[FLT de treinamento VFR SUBJ COOR e AUTH prévia, CTC Sala AIS
+TEL: (19) 3725-5050]]></rmkText>
+                    
+                  
+                    
+                      <rmkText cod="2.22"><![CDATA[FLT de treinamento IFR SUBJ COOR e AUTH prévia, CTC APP-SP
+(11) 2112-3421 e (11) 2112-3422]]></rmkText>
+                    
+                  
+                    
+                      <rmkText cod="2.23"><![CDATA[OPR CTN devido concentração de pássaros (urubus e gaviões) SECT FNA das RWY 15 e 33 e em toda extensão da RWY]]></rmkText>
+                    
+                  
+                    
+                      <rmkText cod="2.23"><![CDATA[Presença de raposinhas do campo (Lycapolex vetulus) na extensão da RWY15/33, predominantemente, durante o período SS-SR.]]></rmkText>
+                    
+                  
+                    
+                      <rmkText cod="2.23"><![CDATA[Restrição a classes e tipos de ACFT: - ACFT WO EQPT RDO; - GLD; - ACFT WO transponder ou com falha neste EQPT; - FLT de ultraleves motorizados]]></rmkText>
+                    
+                  
+                    
+                      <rmkText cod="2.23"><![CDATA[Restrição aos serviços aéreos: - Lançamento de objetos ou pulverização; - Reboque de ACFT; - Lançamento de paraquedas; - FLT acrobático]]></rmkText>
+                    
+                  
+                    
+                      <rmkText cod="2.23"><![CDATA[O AD pode ser utilizado regularmente por quaisquer ACFT compatíveis com o RCD 4E ou inferior, permitida a operação da ACFT Boeing 747-8 (de acordo com os procedimentos especiais descritos em Anexo ao MOPS aprovado pela ANAC).]]></rmkText>
+                    
+                  
+                    
+                      <rmkText cod="2.23"><![CDATA[OPS ACFT da aviação CIV geral somente mediante AUTH do Centro de Operações Aeroportuárias pelo e-mail operacoes.coa@viracopos.com, sendo obrigatório uso de garfo. Para maiores informações, ligar para TEL: (19) 3795-7686. ]]></rmkText>
+                    
+                  
+                    
+                      <rmkText cod="2.23"><![CDATA[RESA:
+<br> -RWY 15 - Junto à THR 33, 90x90 M, provida através de distâncias
+declaradas
+<br> - RWY 33 - Junto à THR 15, 240x150 M.]]></rmkText>
+                    
+                  
+               </rmk>
+
+              
+              
+
+              <rmkDistDeclared count="2">
+                  
+                    <rmkDist>
+                        
+                            <rwy><![CDATA[15]]></rwy>
+                            <tora><![CDATA[3150]]></tora>
+                            <toda><![CDATA[3390]]></toda>
+                            <asda><![CDATA[3150]]></asda>
+                            <lda><![CDATA[3150]]></lda>
+                            <aux/>
+                            <altGeoidal><![CDATA[- 4,36]]></altGeoidal>
+                            <lat><![CDATA[S 22 59 55 ]]></lat>
+                            <lng><![CDATA[W 047 08 49]]></lng>
+                        
+                    </rmkDist>
+                  
+                    <rmkDist>
+                        
+                            <rwy><![CDATA[33]]></rwy>
+                            <tora><![CDATA[3240]]></tora>
+                            <toda><![CDATA[3390]]></toda>
+                            <asda><![CDATA[3240]]></asda>
+                            <lda><![CDATA[3150]]></lda>
+                            <aux/>
+                            <altGeoidal><![CDATA[- 4,26]]></altGeoidal>
+                            <lat><![CDATA[S 23 00 59 ]]></lat>
+                            <lng><![CDATA[W 047 07 19]]></lng>
+                        
+                    </rmkDist>
+                  
+              </rmkDistDeclared>
+
+              
+              
+              
+
+              
+              
+
+              <compls count="8">
+                
+                    <compl cod="2.14" n="1"><![CDATA[MEHT: a. RWY 15 - 62FT b. RWY 33 - 63FT
+				
+			
+				
+			]]></compl>
+                
+                    <compl cod="2.18" n="3"><![CDATA[D-ATIS]]></compl>
+                
+                    <compl cod="2.23" n="4"><![CDATA[Autoatendimento]]></compl>
+                
+                    <compl cod="2.23" n="5"><![CDATA[				
+					DCL AUTH DE TFC via datalink 
+				
+			]]></compl>
+                
+                    <compl cod="2.23" n="6"><![CDATA[CLRD]]></compl>
+                
+                    <compl cod="2.2" n="7"><![CDATA[Aceita PLN e suas atualizações pelo TEL: (19) 3725-5049.]]></compl>
+                
+                    <compl cod="2.23" n="8"><![CDATA[				
+					
+				
+			 OPR NAV Brasil ]]></compl>
+                
+                    <compl cod="2.12" n="9"><![CDATA[PCR]]></compl>
+                
+              </compls>
+
+              
+              
+
+              <timesheets>
+              
+              </timesheets>
+
+
+               
+        
+    </aisweb>
+            
+
+            
+        
+
+
+        
+
+    
+
+    
+    
+
+

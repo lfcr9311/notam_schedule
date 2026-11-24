@@ -1,0 +1,2 @@
+# Dependências estão no pyproject.toml. Instalação completa (análise + ML + testes):
+-e .[dev]

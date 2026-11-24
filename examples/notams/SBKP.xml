@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?><aisweb>
+<notam id="1" total="5" updatedat="2026-11-11 10:00:00">
+  <item><id>101</id><cod>C3001/26</cod><status>N</status><cat>AD</cat><tp>N</tp><dt>2611010000</dt>
+    <n>C3001/26</n><ref/><loc>SBKP</loc><b>2611150300</b><c>2611200800</c><d>DLY 0300-0800</d>
+    <e><![CDATA[RWY 15/33 COMPRIMENTO REDUZIDO PARA 2400M DEVIDO OBRAS. TORA RWY 15 2400M TODA 2400M ASDA 2400M LDA 2200M]]></e>
+    <f/><g/><nof>SBRJ</nof><s>C</s><geo/><aero>Viracopos</aero><cidade>Campinas</cidade><uf>SP</uf></item>
+  <item><id>102</id><cod>A2001/26</cod><status>I</status><cat>AD</cat><tp>N</tp><dt>2611010000</dt>
+    <n>A2001/26</n><ref/><loc>SBKP</loc><b>2611150300</b><c>2611200800</c><d>DLY 0300-0800</d>
+    <e><![CDATA[RWY 15/33 LENGTH REDUCED TO 2400M DUE WIP. TORA RWY 15 2400M TODA 2400M ASDA 2400M LDA 2200M]]></e>
+    <nof>SBRJ</nof><s>A</s><aero>Viracopos</aero></item>
+  <item><id>103</id><cod>C3002/26</cod><status>N</status><cat>AD</cat><tp>N</tp><dt>2611010000</dt>
+    <n>C3002/26</n><ref/><loc>SBKP</loc><b>2611100000</b><c>2612312359</c><d/>
+    <e><![CDATA[PAPI RWY 33 INOPERANTE]]></e></item>
+  <item><id>104</id><cod>C3003/26</cod><status>N</status><cat>AD</cat><tp>N</tp><dt>2611010000</dt>
+    <n>C3003/26</n><ref/><loc>SBKP</loc><b>2611100000</b><c>2611302359</c><d/>
+    <e><![CDATA[TWY C CLSD BTN TWY B AND RWY 15/33]]></e></item>
+  <item><id>105</id><cod>C3004/26</cod><status>N</status><cat>AD</cat><tp>N</tp><dt>2611010000</dt>
+    <n>C3004/26</n><ref/><loc>SBKP</loc><b>2611170000</b><c>2611182359</c><d>NOV 17 18 0100-0500</d>
+    <e><![CDATA[RWY 15/33 CLSD]]></e></item>
+</notam></aisweb>

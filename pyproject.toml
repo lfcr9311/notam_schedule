@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "notam-schedule"
+dynamic = ["version"]
+description = "Cruza a malha de voos com NOTAMs de condição de pista da AISWEB (DECEA)."
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31",
+    "openpyxl>=3.1",
+    "tzdata>=2024.1; platform_system == 'Windows'",
+]
+
+[project.optional-dependencies]
+ml = ["scikit-learn>=1.4", "joblib>=1.3"]          # python -m notam_schedule.ml / --detector hybrid|ml
+tz = ["timezonefinder>=6.0"]                       # time zone from airport coordinates
+api = ["fastapi>=0.115", "uvicorn>=0.34"]          # HTTP API (notam-schedule-api)
+dev = ["pytest>=8.0", "httpx>=0.28", "notam-schedule[ml,tz,api]"]
+
+[project.scripts]
+notam-schedule = "notam_schedule.cli.analyze:main"
+notam-schedule-ml = "notam_schedule.cli.ml:main"
+notam-schedule-api = "notam_schedule.api.__main__:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "notam_schedule.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["notam_schedule*"]
+
+[tool.setuptools.package-data]
+"notam_schedule.resources" = ["*.csv"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

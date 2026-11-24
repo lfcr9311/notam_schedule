@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?><aisweb>
+<notam id="2" total="2" updatedat="2026-11-11 10:00:00">
+  <item><id>201</id><n>C4001/26</n><tp>N</tp><loc>SBRJ</loc><status>N</status><b>2611160000</b><c>2611222359EST</c>
+    <d>MON TIL FRI 0900-1100</d>
+    <e><![CDATA[THR 02R DESLOCADA 300M. DISTANCIAS DECLARADAS RWY 02R/20L: TORA 1023M LDA 1023M]]></e></item>
+  <item><id>202</id><n>C4002/26</n><tp>R</tp><ref>C3999/26</ref><loc>SBRJ</loc><status>N</status><b>2611010000</b><c>PERM</c>
+    <d/><e><![CDATA[RWY 02L/20R LARGURA DISPONIVEL REDUZIDA PARA 30M]]></e></item>
+</notam></aisweb>

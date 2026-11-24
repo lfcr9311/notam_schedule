@@ -1,0 +1,18 @@
+.venv/
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+# local data (data/reference/ is versioned)
+data/input/
+data/cache/
+data/corpus/
+output/
+models/
+models_demo/
+malha*.xlsx
+notam_schedule.egg-info/
+data/raw/
+data/runs/
+build/
+dist/
