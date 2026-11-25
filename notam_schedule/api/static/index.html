@@ -222,8 +222,13 @@
   .field.check { flex-direction: row; align-items: center; gap: 6px; padding-bottom: 8px; }
   .field.check > span { text-transform: none; letter-spacing: 0; font-size: .9rem; color: var(--text-2); font-weight: 500; }
   .seg b { font-weight: 600; color: var(--muted); margin-left: 2px; }
-  .ib-aps { margin-top: 12px; font-size: .9rem; }
-  .ib-aps summary { cursor: pointer; color: var(--accent); font-weight: 500; margin-bottom: 8px; }
+  .ib-aps { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); font-size: .9rem; display: grid; gap: 10px; }
+  .ib-aps h4 { margin: 4px 0 0; font-size: .9rem; }
+  .ib-aps .grow { flex: 1 1 260px; }
+  .ib-aps .grow input { width: 100%; }
+  .chip.x { display: inline-flex; align-items: center; padding: 4px 4px 4px 10px; font-size: .85rem; }
+  .chip.x button { font-size: 1rem; line-height: 1; padding: 0 6px; margin-left: 4px; border-radius: 5px; }
+  .chip.x button:hover { background: var(--b-closed); color: var(--b-closed-fg); }
   .chip.x button { background: none; border: 0; color: inherit; cursor: pointer; font: inherit; padding: 0 0 0 4px; }
   .chip.err-chip { background: var(--b-wet); color: var(--b-wet-fg); }
   .ib-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -288,15 +293,18 @@
         <label class="field check"><input type="checkbox" id="ib-rwy"> <span>Só restrições de pista</span></label>
         <label class="field"><span>Seu nome</span><input id="ib-name" maxlength="80" placeholder="para marcar como lido" autocomplete="name"></label>
         <button class="ghost" id="ib-sync" type="button">Atualizar agora</button>
+        <button class="ghost" id="ib-manage" type="button" aria-expanded="false" aria-controls="ib-aps-box">Gerenciar aeroportos</button>
       </div>
       <p class="hint" id="ib-hint"></p>
-      <details class="ib-aps"><summary id="ib-aps-sum">Aeroportos monitorados</summary>
-        <div class="rwys" id="ib-aps"></div>
-        <form class="form" id="ib-add" style="margin-top:10px">
-          <label class="field"><span>Adicionar aeroporto</span><input id="ib-add-icao" maxlength="4" size="8" placeholder="SBSV ou SSA" autocomplete="off"></label>
-          <button class="ghost">Adicionar</button>
+      <div class="ib-aps" id="ib-aps-box" hidden>
+        <form class="form" id="ib-add">
+          <label class="field grow"><span>Adicionar aeroportos</span><input id="ib-add-icao" maxlength="200" placeholder="SBSV ou SSA" autocomplete="off"></label>
+          <button class="primary">Adicionar</button>
         </form>
-      </details>
+        <p class="hint">Pode colar vários códigos de uma vez, separados por espaço, vírgula ou linha. Remover tira o aeroporto do monitoramento; o histórico de NOTAMs fica guardado no banco.</p>
+        <h4 id="ib-aps-sum">Aeroportos monitorados</h4>
+        <div class="rwys" id="ib-aps"></div>
+      </div>
     </section>
     <nav class="ib-tabs" id="ib-tabs" aria-label="Aeroportos com NOTAMs"></nav>
     <div id="ib-out" class="panel"></div>
@@ -520,11 +528,12 @@ function ibItem(n) {
 
 function ibAirports(aps) {
   $("ib-aps-sum").textContent = `Aeroportos monitorados (${aps.length})`;
+  $("ib-manage").textContent = `Gerenciar aeroportos (${aps.length})`;
   $("ib-aps").replaceChildren(...aps.map(a => {
     const rm = el("button", { type: "button", textContent: "×", title: `Parar de monitorar ${a.icao}`, ariaLabel: `Remover ${a.icao}` });
     rm.onclick = async () => {
       if (!confirm(`Parar de monitorar ${a.icao}? O histórico de NOTAMs fica guardado.`)) return;
-      try { await api(`web/airports/${a.icao}?scope=${ibScope}`, { method: "DELETE" }); loadInbox(); } catch (err) { $("ib-hint").textContent = err.message; }
+      try { await api(`web/airports/${a.icao}?scope=${ibScope}`, { method: "DELETE" }); $("ib-hint").textContent = `${a.icao} removido do monitoramento.`; loadInbox(true); } catch (err) { $("ib-hint").textContent = err.message; }
     };
     return el("span", { className: `chip x${a.last_error ? " err-chip" : ""}`, title: a.last_error ? `Última consulta falhou: ${a.last_error}` : (a.name || "") },
       `${a.icao}${a.name ? " · " + a.name : ""}`, rm);
@@ -574,7 +583,7 @@ async function loadInbox(quiet, reselect) {   // reselect: leave an airport with
     if (never.length) kids.push(warnBox(`Ainda não consultados: ${never.map(a => a.icao).join(", ")}. Clique em "Atualizar agora" ou aguarde as 9h/16h.`));
     const synced = aps.filter(a => a.last_sync_at && !a.last_error);
     if (!aps.length) {
-      kids.push(emptyBox(ICON.alert, "Nenhum aeroporto monitorado nesta aba. Adicione em \"Aeroportos monitorados\"."));
+      kids.push(emptyBox(ICON.alert, "Nenhum aeroporto monitorado nesta aba. Clique em \"Gerenciar aeroportos\" para adicionar."));
     } else if (!synced.length) {
       kids.push(emptyBox(ICON.alert, "Ainda não há NOTAMs: nenhum aeroporto desta aba foi consultado com sucesso. Clique em \"Atualizar agora\"."));
     } else if (!r) {
@@ -608,16 +617,25 @@ $("ib-sync").onclick = async () => {
   finally { btn.disabled = false; btn.textContent = "Atualizar agora"; }
 };
 
+$("ib-manage").onclick = () => {
+  const box = $("ib-aps-box");
+  box.hidden = !box.hidden;
+  $("ib-manage").setAttribute("aria-expanded", String(!box.hidden));
+  if (!box.hidden) $("ib-add-icao").focus();
+};
+
 $("ib-add").onsubmit = async e => {
   e.preventDefault();
-  const code = $("ib-add-icao").value.trim();
-  if (!code) return;
-  try {
-    await api("web/airports", jsonOpts("POST", { icao: code, scope: ibScope }));
-    $("ib-add-icao").value = "";
-    $("ib-hint").textContent = `${code.toUpperCase()} adicionado. Os NOTAMs dele entram na próxima atualização.`;
-    loadInbox();
-  } catch (err) { $("ib-hint").textContent = err.message; }
+  const codes = [...new Set($("ib-add-icao").value.toUpperCase().split(/[\s,;]+/).filter(Boolean))];
+  if (!codes.length) return;
+  const ok = [], bad = [];
+  for (const code of codes) {
+    try { await api("web/airports", jsonOpts("POST", { icao: code, scope: ibScope })); ok.push(code); }
+    catch (err) { bad.push(err.message); }
+  }
+  $("ib-add-icao").value = bad.length ? codes.filter(c => !ok.includes(c)).join(" ") : "";
+  $("ib-hint").textContent = [ok.length ? `Adicionado${ok.length > 1 ? "s" : ""}: ${ok.join(", ")}. Os NOTAMs entram na próxima atualização (ou clique em "Atualizar agora").` : "", ...bad].filter(Boolean).join(" ");
+  loadInbox(true);
 };
 
 setScope("br");
