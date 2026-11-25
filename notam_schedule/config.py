@@ -25,7 +25,6 @@ ALERTS_DB = DATA_DIR / "alerts" / "alerts.sqlite"  # e-mail digests already buil
 # watched airports + their NOTAMs + read marks. Production: DATABASE_URL (PostgreSQL)
 NOTAM_DB_URL = f"sqlite:///{DATA_DIR / 'notams.db'}"
 AIRPORTS_FILE = REFERENCE_DIR / "airports.csv"
-ALERT_AIRPORTS_FILE = REFERENCE_DIR / "alert_airports.txt"  # airports of the twice-a-day digest
 OUTPUT_DIR = PROJECT_ROOT / "output"         # reports
 REVIEW_FILE = OUTPUT_DIR / "review" / "review.csv"
 GOLD_FILE = OUTPUT_DIR / "review" / "gold.csv"

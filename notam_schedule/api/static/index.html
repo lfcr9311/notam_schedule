@@ -67,6 +67,7 @@
   nav { display: flex; gap: 4px; }
   nav button { background: none; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--text-2); font: inherit; font-weight: 500; padding: 10px 12px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
   nav button:hover { color: var(--text); }
+  .theme { margin-left: auto; padding: 6px 12px; font-size: .85rem; }
   nav button.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
 
   main.wrap { padding: 24px 16px 56px; }
@@ -256,9 +257,11 @@
         <h1>Identificador de NOTAM</h1>
         <p>NOTAMs de pista e aeródromo · AISWEB/DECEA no Brasil · FAA no exterior</p>
       </div>
+      <button class="ghost theme" id="theme" type="button" title="Alternar modo claro / escuro"></button>
     </div>
     <nav id="tabs">
-      <button data-tab="inbox" class="on">NOTAMs a tratar</button>
+      <button data-tab="inbox" data-scope="br" class="on">NOTAMs Brasil</button>
+      <button data-tab="inbox" data-scope="intl">NOTAMs internacionais</button>
       <button data-tab="cons">Consulta por aeroporto</button>
       <button data-tab="check">Checar horário</button>
       <button data-tab="malha">Enviar malha</button>
@@ -268,8 +271,7 @@
 </header>
 
 <main class="wrap">
-  <!-- ===== consulta por aeroporto ===== -->
-  <!-- ===== NOTAMs a tratar ===== -->
+  <!-- ===== NOTAMs Brasil / internacionais (mesmo painel, filtrado por escopo) ===== -->
   <div class="panel" id="tab-inbox">
     <section class="card pad">
       <div class="form">
@@ -280,7 +282,7 @@
         <label class="field"><span>Seu nome</span><input id="ib-name" maxlength="80" placeholder="para marcar como lido" autocomplete="name"></label>
         <button class="ghost" id="ib-sync" type="button">Atualizar agora</button>
       </div>
-      <p class="hint" id="ib-hint">NOTAMs ativos dos aeroportos monitorados, atualizados às 9h e às 16h (Brasília). Marcar como lido vale para toda a equipe.</p>
+      <p class="hint" id="ib-hint"></p>
       <details class="ib-aps"><summary id="ib-aps-sum">Aeroportos monitorados</summary>
         <div class="rwys" id="ib-aps"></div>
         <form class="form" id="ib-add" style="margin-top:10px">
@@ -427,16 +429,44 @@ async function api(path, opts) {
 
 // ---------- abas ----------
 for (const b of $("tabs").querySelectorAll("button")) b.onclick = () => {
-  for (const o of $("tabs").querySelectorAll("button")) {
-    o.classList.toggle("on", o === b);
-    $("tab-" + o.dataset.tab).hidden = o !== b;
-  }
+  for (const o of $("tabs").querySelectorAll("button")) o.classList.toggle("on", o === b);
+  for (const o of $("tabs").querySelectorAll("button")) $("tab-" + o.dataset.tab).hidden = o.dataset.tab !== b.dataset.tab;
   if (b.dataset.tab === "nov") loadChanges();
-  if (b.dataset.tab === "inbox") loadInbox();
+  if (b.dataset.tab === "inbox") setScope(b.dataset.scope);
 };
 
-// ---------- NOTAMs a tratar ----------
-let ibState = "unread";
+// ---------- modo claro / escuro ----------
+const THEME_KEY = "notam-tema";
+const systemDark = () => matchMedia("(prefers-color-scheme: dark)").matches;
+function applyTheme(t) {
+  if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  const dark = t ? t === "dark" : systemDark();
+  $("theme").textContent = dark ? "☀ Modo claro" : "☾ Modo escuro";
+}
+let theme = null;
+try { theme = localStorage.getItem(THEME_KEY); } catch { /* sem armazenamento local */ }
+applyTheme(theme);
+$("theme").onclick = () => {
+  const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : systemDark();
+  theme = dark ? "light" : "dark";
+  applyTheme(theme);
+  try { localStorage.setItem(THEME_KEY, theme); } catch { /* idem */ }
+};
+
+// ---------- NOTAMs Brasil / internacionais ----------
+let ibState = "unread", ibScope = "br";
+const SCOPE = {
+  br: { hint: "NOTAMs ativos dos aeroportos brasileiros monitorados (AISWEB), atualizados às 9h e às 16h (Brasília). Marcar como lido vale para toda a equipe.",
+        add: "SBSV ou SSA" },
+  intl: { hint: "NOTAMs ativos dos aeroportos internacionais monitorados (FAA), atualizados às 9h e às 16h (Brasília). Marcar como lido vale para toda a equipe.",
+          add: "KMIA ou MIA" },
+};
+function setScope(scope) {
+  if (scope !== ibScope) { ibScope = scope; $("ib-icao").value = ""; }
+  $("ib-hint").textContent = SCOPE[ibScope].hint;
+  $("ib-add-icao").placeholder = SCOPE[ibScope].add;
+  loadInbox();
+}
 const NAME_KEY = "notam-analista";
 try { $("ib-name").value = localStorage.getItem(NAME_KEY) || ""; } catch { /* sem armazenamento local */ }
 $("ib-name").onchange = () => { try { localStorage.setItem(NAME_KEY, $("ib-name").value.trim()); } catch { /* idem */ } };
@@ -491,7 +521,7 @@ function ibAirports(aps) {
     const rm = el("button", { type: "button", textContent: "×", title: `Parar de monitorar ${a.icao}`, ariaLabel: `Remover ${a.icao}` });
     rm.onclick = async () => {
       if (!confirm(`Parar de monitorar ${a.icao}? O histórico de NOTAMs fica guardado.`)) return;
-      try { await api(`web/airports/${a.icao}`, { method: "DELETE" }); loadInbox(); } catch (err) { $("ib-hint").textContent = err.message; }
+      try { await api(`web/airports/${a.icao}?scope=${ibScope}`, { method: "DELETE" }); loadInbox(); } catch (err) { $("ib-hint").textContent = err.message; }
     };
     return el("span", { className: `chip x${a.last_error ? " err-chip" : ""}`, title: a.last_error ? `Última consulta falhou: ${a.last_error}` : (a.name || "") },
       `${a.icao}${a.name ? " · " + a.name : ""}`, rm);
@@ -501,7 +531,7 @@ function ibAirports(aps) {
 let ibLoading = 0;
 async function loadInbox(quiet) {
   const out = $("ib-out"), ticket = ++ibLoading;
-  const q = new URLSearchParams({ state: ibState });
+  const q = new URLSearchParams({ state: ibState, scope: ibScope });
   if ($("ib-icao").value) q.set("icao", $("ib-icao").value);
   if ($("ib-rwy").checked) q.set("runway_only", "true");
   if (!quiet) show(out, loading("Carregando NOTAMs…"));
@@ -551,14 +581,14 @@ $("ib-add").onsubmit = async e => {
   const code = $("ib-add-icao").value.trim();
   if (!code) return;
   try {
-    await api("web/airports", jsonOpts("POST", { icao: code }));
+    await api("web/airports", jsonOpts("POST", { icao: code, scope: ibScope }));
     $("ib-add-icao").value = "";
     $("ib-hint").textContent = `${code.toUpperCase()} adicionado. Os NOTAMs dele entram na próxima atualização.`;
     loadInbox();
   } catch (err) { $("ib-hint").textContent = err.message; }
 };
 
-loadInbox();
+setScope("br");
 
 // ---------- consulta por aeroporto ----------
 const today = new Date();

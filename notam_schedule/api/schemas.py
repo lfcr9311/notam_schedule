@@ -266,6 +266,7 @@ class DigestInfo(BaseModel):
 
 # ---------------------------------------------------------------- NOTAM inbox (watched airports, read marks)
 InboxState = Literal["unread", "read", "all"]
+InboxScope = Literal["br", "intl"]
 
 
 class InboxNotam(BaseModel):
@@ -316,6 +317,7 @@ class ReadRequest(BaseModel):
 
 class AirportAdd(BaseModel):
     icao: str = Field(description="ICAO (SBSV) or IATA (SSA)")
+    scope: InboxScope | None = Field(None, description="Tab it is added from: br refuses foreign, intl refuses Brazilian")
 
 
 class SyncInfo(BaseModel):

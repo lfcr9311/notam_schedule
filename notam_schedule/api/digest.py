@@ -7,7 +7,6 @@ NOTAMs first seen in this sync are highlighted and the ones that left are listed
 failed are reported as "sem dados" (never as "no NOTAM"). pubDate = when the queries finished, so a poller that
 already checked the feed after the scheduled time still sees it as new.
 
-    NOTAM_ALERT_AIRPORTS   comma-separated list; default: data/reference/alert_airports.txt (one code per line)
     NOTAM_DIGEST_TIMES     default 09:00,16:00
     NOTAM_DIGEST_TZ        default America/Sao_Paulo
     NOTAM_PUBLIC_URL       public address of the page, for the links in the e-mail (e.g. http://host/notam/)
@@ -23,7 +22,6 @@ from html import escape
 from xml.sax.saxutils import escape as xml_escape
 from zoneinfo import ZoneInfo
 
-from ..config import ALERT_AIRPORTS_FILE
 from ..domain.ports import NotamSource
 from ..ingestion.airports import AirportDB
 from ..storage.alerts import DigestStore
@@ -32,7 +30,6 @@ from .app import MAX_AIRPORTS, MAX_DAYS, query_notams
 
 log = logging.getLogger(__name__)
 UTC = timezone.utc
-DEFAULT_AIRPORTS = ["SBSV", "SBBE"]
 CATCH_UP = timedelta(hours=3)        # after a restart, still build a digest whose time passed less than this ago
 FEED_ITEMS = 10
 
@@ -48,27 +45,6 @@ def digest_times() -> list[tuple[int, int]]:
         h, _, m = item.strip().partition(":")
         out.append((int(h), int(m or 0)))
     return sorted(out)
-
-
-def alert_airports(airports: AirportDB) -> list[str]:
-    """Initial list of watched airports (seeds the database): NOTAM_ALERT_AIRPORTS, else the list file, else
-    SBSV/SBBE. IATA codes are converted. After that the database is the list (add/remove on the page)."""
-    raw = os.getenv("NOTAM_ALERT_AIRPORTS", "")
-    if raw.strip():
-        codes = raw.replace(";", ",").split(",")
-    elif ALERT_AIRPORTS_FILE.is_file():
-        codes = [line.split("#")[0] for line in ALERT_AIRPORTS_FILE.read_text(encoding="utf-8").splitlines()]
-    else:
-        codes = DEFAULT_AIRPORTS
-    out: list[str] = []
-    for c in (c.strip().upper() for c in codes):
-        if len(c) == 3 and c in airports.by_iata:
-            c = airports.by_iata[c].icao
-        if len(c) == 4 and c.isalpha() and c not in out:
-            out.append(c)
-        elif c:
-            log.warning("Código de aeroporto ignorado na lista de alertas: %s", c)
-    return out
 
 
 def slots_between(start: datetime, end: datetime) -> list[datetime]:

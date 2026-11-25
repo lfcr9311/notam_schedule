@@ -385,6 +385,28 @@
               "default": false,
               "title": "Runway Only"
             }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "br",
+                    "intl"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "br: Brazilian airports, intl: foreign ones",
+              "title": "Scope"
+            },
+            "description": "br: Brazilian airports, intl: foreign ones"
           }
         ],
         "responses": {
@@ -532,17 +554,49 @@
         ],
         "summary": "Watched",
         "operationId": "watched_web_airports_get",
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "br",
+                    "intl"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scope"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/InboxAirport"
                   },
-                  "type": "array",
                   "title": "Response Watched Web Airports Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -556,14 +610,14 @@
         "summary": "Add Airport",
         "operationId": "add_airport_web_airports_post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AirportAdd"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -571,10 +625,10 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/InboxAirport"
                   },
-                  "type": "array",
                   "title": "Response Add Airport Web Airports Post"
                 }
               }
@@ -608,6 +662,26 @@
             "schema": {
               "type": "string",
               "title": "Icao"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "br",
+                    "intl"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scope"
             }
           }
         ],
@@ -1026,6 +1100,22 @@
             "type": "string",
             "title": "Icao",
             "description": "ICAO (SBSV) or IATA (SSA)"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "br",
+                  "intl"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope",
+            "description": "Tab it is added from: br refuses foreign, intl refuses Brazilian"
           }
         },
         "type": "object",

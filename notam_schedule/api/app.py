@@ -226,7 +226,7 @@ def create_app(source: NotamSource | None = None, source_kind: str = "aisweb", a
     from ..config import ALERTS_DB
     from ..storage.alerts import DigestStore
     from ..storage.notam_db import NotamDB
-    from .digest import DigestScheduler, alert_airports, build_digest, public_url
+    from .digest import DigestScheduler, build_digest, public_url
     from .web import build_router
 
     if schedule_digest is None:
@@ -238,10 +238,7 @@ def create_app(source: NotamSource | None = None, source_kind: str = "aisweb", a
     airports = airports or AirportDB.default()
 
     digests = DigestStore(alerts_db or ALERTS_DB)
-    db = notam_db or NotamDB()
-    seed = alert_airports(airports)            # first run: the list file becomes the watched airports
-    db.seed_airports([(i, airports.by_icao[i].name if i in airports.by_icao else "") for i in seed],
-                     datetime.now(UTC))
+    db = notam_db or NotamDB()                 # table `airport` = the watched airports (managed on the page)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):

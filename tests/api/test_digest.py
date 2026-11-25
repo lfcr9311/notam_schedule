@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from openpyxl import load_workbook
 
 from notam_schedule.api.app import create_app
-from notam_schedule.api.digest import DigestScheduler, alert_airports, build_digest, render_rss, slots_between
+from notam_schedule.api.digest import DigestScheduler, build_digest, render_rss, slots_between
 from notam_schedule.ingestion.aisweb import AiswebClient
 from notam_schedule.ingestion.airports import AirportDB
 from notam_schedule.ingestion.faa import FaaNmsClient
@@ -34,11 +34,6 @@ def source():
 def test_schedule_is_09_and_16_brasilia(monkeypatch):
     monkeypatch.delenv("NOTAM_DIGEST_TIMES", raising=False)
     assert slots_between(U(2026, 11, 24), U(2026, 11, 25)) == [U(2026, 11, 24, 12), U(2026, 11, 24, 19)]
-
-
-def test_airport_list_accepts_iata_and_ignores_junk(monkeypatch):
-    monkeypatch.setenv("NOTAM_ALERT_AIRPORTS", "SSA; sbbe, SCEL, XX, SSA")
-    assert alert_airports(AirportDB.default()) == ["SBSV", "SBBE", "SCEL"]
 
 
 def test_digest_diff_and_rss(tmp_path, source):
@@ -114,10 +109,9 @@ def test_scheduler_builds_each_slot_once(tmp_path, source):
 
 
 def test_endpoints(tmp_path, monkeypatch, source):
-    monkeypatch.setenv("NOTAM_ALERT_AIRPORTS", "SBKP,SCEL")
     monkeypatch.delenv("NOTAM_PUBLIC_URL", raising=False)
     c = TestClient(create_app(source, "offline", api_key="segredo", alerts_db=tmp_path / "a.sqlite",
-                              notam_db=NotamDB(f"sqlite:///{tmp_path}/n.db")))
+                              notam_db=make_db(tmp_path, "SBKP", "SCEL")))
     assert c.post("/api/resumos").status_code == 401
     info = c.post("/api/resumos", headers=KEY).json()
     assert info["page"].endswith("/web/resumos/1") and info["feed"].endswith("/web/alertas.rss")

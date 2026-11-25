@@ -160,9 +160,11 @@ class NotamDB:
 
     # ---------------------------------------------------------------- reading / read marks
     def notams(self, state: str = "all", icao: str | None = None, runway_only: bool = False,
-               active: bool = True) -> list[dict]:
-        """state: unread | read | all. Runway restrictions first, then newest first."""
+               active: bool = True, icaos: list[str] | None = None) -> list[dict]:
+        """state: unread | read | all. Runway restrictions first, then newest first. icaos: limit to these."""
         q = select(notam_t).where(notam_t.c.icao.in_(self._watched()))   # removed airports leave the list
+        if icaos is not None:
+            q = q.where(notam_t.c.icao.in_(icaos))
         if active:
             q = q.where(notam_t.c.active.is_(True))
         if state == "unread":
@@ -177,9 +179,11 @@ class NotamDB:
         with self.engine.connect() as c:
             return [self._row(r) for r in c.execute(q)]
 
-    def counts(self, icao: str | None = None) -> dict[str, int]:
+    def counts(self, icao: str | None = None, icaos: list[str] | None = None) -> dict[str, int]:
         q = select(func.count(), func.count(notam_t.c.read_at)).where(
             notam_t.c.active.is_(True), notam_t.c.icao.in_(self._watched()))
+        if icaos is not None:
+            q = q.where(notam_t.c.icao.in_(icaos))
         if icao:
             q = q.where(notam_t.c.icao == icao)
         with self.engine.connect() as c:

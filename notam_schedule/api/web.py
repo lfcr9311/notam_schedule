@@ -7,7 +7,7 @@
     GET  /web/changes                what changed between an analysis and the previous one
     GET  /web/alertas.rss            RSS: twice-a-day digest of every active NOTAM (Power Automate -> e-mail)
     GET  /web/resumos/{id}[.xlsx]    one digest as a page or Excel
-    GET  /web/inbox                  NOTAMs of the watched airports: unread / read / all (team-wide read marks)
+    GET  /web/inbox?scope=br|intl    NOTAMs of the watched airports: unread / read / all (team-wide read marks)
     PUT|DELETE /web/inbox/{id}/read  mark / unmark as read
     POST /web/inbox/sync             query every watched airport now (besides 09:00/16:00)
     GET|POST /web/airports, DELETE /web/airports/{icao}   the watched airports
@@ -26,6 +26,7 @@ from fastapi.responses import FileResponse, Response
 from starlette.concurrency import run_in_threadpool
 
 from ..config import RUNS_DB, WEB_REPORTS_DIR
+from ..domain.airport import BR_PREFIXES
 from ..domain.changes import ENDED, NEW, SEVERITY_CHANGED, WINDOW_CHANGED, Change, diff_impacts
 from ..domain.confidence import impact_confidence
 from ..domain.impact import CRITICAL, SEVERITY_ORDER, daily_summary
@@ -308,22 +309,27 @@ def _inbox_routes(router: APIRouter, db: NotamDB, source: NotamSource, airports:
     sync_lock = Lock()
     last_sync: list[datetime] = []
 
+    def in_scope(icao: str, scope: str | None) -> bool:
+        return scope is None or (scope == "br") == icao.startswith(BR_PREFIXES)
+
     @router.get("/inbox", response_model=s.InboxResponse)
     def inbox(state: s.InboxState = Query("unread"), icao: str | None = Query(None),
-              runway_only: bool = Query(False)):
+              runway_only: bool = Query(False),
+              scope: s.InboxScope | None = Query(None, description="br: Brazilian airports, intl: foreign ones")):
         """Active NOTAMs of the watched airports. Read marks are shared by the whole team."""
         code = icao.strip().upper() if icao else None
-        rows = db.notams(state, code, runway_only)
-        everything = db.notams("all")
+        watched = [a for a in db.airports() if in_scope(a["icao"], scope)]
+        icaos = [a["icao"] for a in watched] if scope else None
+        rows = db.notams(state, code, runway_only, icaos=icaos)
         per: dict[str, list[int]] = {}
-        for r in everything:
+        for r in db.notams("all", icaos=icaos):
             c = per.setdefault(r["icao"], [0, 0])
             c[1] += 1
             c[0] += r["read_at"] is None
         aps = [s.InboxAirport(icao=a["icao"], name=a["name"], last_sync_at=a["last_sync_at"], last_error=a["last_error"],
                               unread=per.get(a["icao"], [0, 0])[0], total=per.get(a["icao"], [0, 0])[1])
-               for a in db.airports()]
-        return s.InboxResponse(state=state, counts=s.InboxCounts(**db.counts(code)), airports=aps,
+               for a in watched]
+        return s.InboxResponse(state=state, counts=s.InboxCounts(**db.counts(code, icaos=icaos)), airports=aps,
                                notams=[_inbox_notam(r) for r in rows])
 
     @router.put("/inbox/{notam_id}/read", response_model=s.InboxNotam)
@@ -357,8 +363,8 @@ def _inbox_routes(router: APIRouter, db: NotamDB, source: NotamSource, airports:
                           ended=len(result.ended), errors=result.errors)
 
     @router.get("/airports", response_model=list[s.InboxAirport])
-    def watched():
-        return inbox("all", None, False).airports
+    def watched(scope: s.InboxScope | None = Query(None)):
+        return inbox("all", None, False, scope).airports
 
     @router.post("/airports", response_model=list[s.InboxAirport])
     def add_airport(req: s.AirportAdd):
@@ -367,12 +373,16 @@ def _inbox_routes(router: APIRouter, db: NotamDB, source: NotamSource, airports:
             code = airports.by_iata[code].icao
         if len(code) != 4 or not code.isalpha():
             raise HTTPException(422, f"Código inválido: {req.icao}. Use ICAO (SBSV) ou IATA (SSA).")
+        if not in_scope(code, req.scope):
+            where = "NOTAMs Brasil" if req.scope == "intl" else "NOTAMs internacionais"
+            kind = "brasileiro" if req.scope == "intl" else "fora do Brasil"
+            raise HTTPException(422, f"{code} é {kind}: adicione na aba \"{where}\".")
         ap = airports.by_icao.get(code)
         db.add_airport(code, ap.name if ap else "", datetime.now(UTC))
-        return watched()
+        return watched(req.scope)
 
     @router.delete("/airports/{icao}", response_model=list[s.InboxAirport])
-    def remove_airport(icao: str):
+    def remove_airport(icao: str, scope: s.InboxScope | None = Query(None)):
         if not db.remove_airport(icao.strip().upper()):
             raise HTTPException(404, "Aeroporto não está na lista.")
-        return watched()
+        return watched(scope)

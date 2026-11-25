@@ -1,5 +1,0 @@
-# Aeroportos do resumo de NOTAMs enviado aos analistas (09:00 e 16:00 de Brasília).
-# Um código por linha, ICAO (SBSV) ou IATA (SSA). Linhas com # são ignoradas.
-# Brasil vem da AISWEB; exterior, da FAA.
-SBSV
-SBBE

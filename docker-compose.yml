@@ -9,7 +9,7 @@ services:
     env_file: .env                  # AISWEB_API_KEY, AISWEB_API_PASS, NOTAM_API_KEY (não vão pro git)
     environment:
       NOTAM_ROOT_PATH: /notam       # o Caddy do fortran publica a página em /notam/ (tira o prefixo)
-      # links dos e-mails do resumo de NOTAMs (09:00 e 16:00 de Brasília, lista em data/reference/alert_airports.txt)
+      # links dos e-mails do resumo de NOTAMs (09:00 e 16:00 de Brasília; aeroportos = tabela airport do banco)
       NOTAM_PUBLIC_URL: http://ec2-3-137-219-87.us-east-2.compute.amazonaws.com/notam/
     volumes:
       - ./data:/app/data            # cache, histórico bruto da AISWEB e execuções sobrevivem ao redeploy
