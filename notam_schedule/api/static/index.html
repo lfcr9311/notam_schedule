@@ -226,6 +226,14 @@
   .ib-aps summary { cursor: pointer; color: var(--accent); font-weight: 500; margin-bottom: 8px; }
   .chip.x button { background: none; border: 0; color: inherit; cursor: pointer; font: inherit; padding: 0 0 0 4px; }
   .chip.err-chip { background: var(--b-wet); color: var(--b-wet-fg); }
+  .ib-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ib-tabs:empty { display: none; }
+  .ib-tabs button { background: var(--surface); color: var(--text-2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: .85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .ib-tabs button:hover { border-color: var(--accent); color: var(--text); }
+  .ib-tabs button b { background: var(--chip); color: var(--chip-fg); border-radius: 999px; padding: 0 7px; font-size: .75rem; }
+  .ib-tabs button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  .ib-tabs button.on b { background: var(--accent-fg); color: var(--accent); }
+  .ib-tabs button.err { border-color: var(--b-closed-fg); }
   .ib-n { border-top: 1px solid var(--line); padding: 12px 18px; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; }
   .ib-n:first-child { border-top: 0; }
   .ib-n.read { opacity: .62; }
@@ -277,7 +285,6 @@
       <div class="form">
         <div class="field"><span>Mostrar</span><div class="seg" id="ib-state">
           <button type="button" data-state="unread" class="on">Não lidos <b id="ib-n-unread"></b></button><button type="button" data-state="read">Lidos <b id="ib-n-read"></b></button><button type="button" data-state="all">Todos <b id="ib-n-all"></b></button></div></div>
-        <label class="field"><span>Aeroporto</span><select id="ib-icao"><option value="">Todos</option></select></label>
         <label class="field check"><input type="checkbox" id="ib-rwy"> <span>Só restrições de pista</span></label>
         <label class="field"><span>Seu nome</span><input id="ib-name" maxlength="80" placeholder="para marcar como lido" autocomplete="name"></label>
         <button class="ghost" id="ib-sync" type="button">Atualizar agora</button>
@@ -291,6 +298,7 @@
         </form>
       </details>
     </section>
+    <nav class="ib-tabs" id="ib-tabs" aria-label="Aeroportos com NOTAMs"></nav>
     <div id="ib-out" class="panel"></div>
   </div>
 
@@ -454,7 +462,7 @@ $("theme").onclick = () => {
 };
 
 // ---------- NOTAMs Brasil / internacionais ----------
-let ibState = "unread", ibScope = "br";
+let ibState = "unread", ibScope = "br", ibIcao = null;
 const SCOPE = {
   br: { hint: "NOTAMs ativos dos aeroportos brasileiros monitorados (AISWEB), atualizados às 9h e às 16h (Brasília). Marcar como lido vale para toda a equipe.",
         add: "SBSV ou SSA" },
@@ -462,7 +470,7 @@ const SCOPE = {
           add: "KMIA ou MIA" },
 };
 function setScope(scope) {
-  if (scope !== ibScope) { ibScope = scope; $("ib-icao").value = ""; }
+  if (scope !== ibScope) { ibScope = scope; ibIcao = null; }
   $("ib-hint").textContent = SCOPE[ibScope].hint;
   $("ib-add-icao").placeholder = SCOPE[ibScope].add;
   loadInbox();
@@ -473,9 +481,8 @@ $("ib-name").onchange = () => { try { localStorage.setItem(NAME_KEY, $("ib-name"
 for (const b of $("ib-state").querySelectorAll("button")) b.onclick = () => {
   ibState = b.dataset.state;
   for (const o of $("ib-state").querySelectorAll("button")) o.classList.toggle("on", o === b);
-  loadInbox();
+  loadInbox(false, true);
 };
-$("ib-icao").onchange = () => loadInbox();
 $("ib-rwy").onchange = () => loadInbox();
 const fmtSeen = iso => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).replace(",", "");
 const jsonOpts = (method, body) => ({ method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -512,10 +519,6 @@ function ibItem(n) {
 }
 
 function ibAirports(aps) {
-  const sel = $("ib-icao"), keep = sel.value;
-  sel.replaceChildren(el("option", { value: "", textContent: "Todos" }),
-    ...aps.map(a => el("option", { value: a.icao, textContent: `${a.icao}${a.unread ? ` (${a.unread})` : ""}` })));
-  sel.value = aps.some(a => a.icao === keep) ? keep : "";
   $("ib-aps-sum").textContent = `Aeroportos monitorados (${aps.length})`;
   $("ib-aps").replaceChildren(...aps.map(a => {
     const rm = el("button", { type: "button", textContent: "×", title: `Parar de monitorar ${a.icao}`, ariaLabel: `Remover ${a.icao}` });
@@ -528,35 +531,64 @@ function ibAirports(aps) {
   }));
 }
 
+// uma aba por aeroporto que tem NOTAMs no filtro escolhido (não lidos / lidos / todos)
+const stateCount = (a, state) => ({ unread: a.unread, read: a.total - a.unread, all: a.total })[state];
+
+function ibTabs(aps) {
+  const shown = aps.filter(a => stateCount(a, ibState) > 0 || a.icao === ibIcao);
+  $("ib-tabs").replaceChildren(...shown.map(a => {
+    const b = el("button", { type: "button", className: `${a.icao === ibIcao ? "on" : ""}${a.last_error ? " err" : ""}`,
+      title: a.last_error ? `Última consulta falhou: ${a.last_error}` : (a.name || a.icao) },
+      a.icao, el("b", { textContent: stateCount(a, ibState) }));
+    b.onclick = () => { ibIcao = a.icao; loadInbox(); };
+    return b;
+  }));
+  return shown;
+}
+
 let ibLoading = 0;
-async function loadInbox(quiet) {
+async function loadInbox(quiet, reselect) {   // reselect: leave an airport with nothing in the new filter
   const out = $("ib-out"), ticket = ++ibLoading;
-  const q = new URLSearchParams({ state: ibState, scope: ibScope });
-  if ($("ib-icao").value) q.set("icao", $("ib-icao").value);
-  if ($("ib-rwy").checked) q.set("runway_only", "true");
   if (!quiet) show(out, loading("Carregando NOTAMs…"));
   try {
-    const r = await api(`web/inbox?${q}`);
+    let aps = await api(`web/airports?scope=${ibScope}`);
     if (ticket !== ibLoading) return;          // uma consulta mais nova já foi pedida
-    for (const k of ["unread", "read", "all"]) $(`ib-n-${k}`).textContent = r.counts[k];
-    ibAirports(r.airports);
-    const kids = [];
-    const failed = r.airports.filter(a => a.last_error);
-    if (failed.length) kids.push(warnBox(`Última consulta falhou em ${failed.map(a => a.icao).join(", ")}: os NOTAMs desses aeroportos podem estar desatualizados.`));
-    const never = r.airports.filter(a => !a.last_sync_at);
-    if (never.length) kids.push(warnBox(`Ainda não consultados: ${never.map(a => a.icao).join(", ")}. Clique em "Atualizar agora" ou aguarde as 9h/16h.`));
-    if (!r.notams.length) {
-      const msg = { unread: "Nenhum NOTAM não lido. Tudo tratado!", read: "Nenhum NOTAM marcado como lido.", all: "Nenhum NOTAM ativo." }[r.state];
-      kids.push(emptyBox(ICON.ok, msg));
+    const cur = aps.find(a => a.icao === ibIcao);
+    if (!cur || (reselect && stateCount(cur, ibState) === 0)) ibIcao = null;
+    if (!ibIcao) ibIcao = (aps.find(a => stateCount(a, ibState) > 0) || {}).icao || null;
+    let r = null;
+    if (ibIcao) {
+      const q = new URLSearchParams({ state: ibState, scope: ibScope, icao: ibIcao });
+      if ($("ib-rwy").checked) q.set("runway_only", "true");
+      r = await api(`web/inbox?${q}`);
+      if (ticket !== ibLoading) return;
+      aps = r.airports;
     }
-    const byAp = new Map();
-    for (const n of r.notams) { if (!byAp.has(n.icao)) byAp.set(n.icao, []); byAp.get(n.icao).push(n); }
-    for (const [icao, list] of byAp) {
-      const ap = r.airports.find(a => a.icao === icao) || { name: "", unread: 0, total: 0 };
+    for (const k of ["unread", "read", "all"]) $(`ib-n-${k}`).textContent = aps.reduce((t, a) => t + stateCount(a, k), 0);
+    ibAirports(aps);
+    ibTabs(aps);
+    const kids = [];
+    const failed = aps.filter(a => a.last_error);
+    if (failed.length) kids.push(warnBox(`Última consulta falhou em ${failed.map(a => a.icao).join(", ")}: os NOTAMs desses aeroportos podem estar desatualizados.`));
+    const never = aps.filter(a => !a.last_sync_at);
+    if (never.length) kids.push(warnBox(`Ainda não consultados: ${never.map(a => a.icao).join(", ")}. Clique em "Atualizar agora" ou aguarde as 9h/16h.`));
+    const synced = aps.filter(a => a.last_sync_at && !a.last_error);
+    if (!aps.length) {
+      kids.push(emptyBox(ICON.alert, "Nenhum aeroporto monitorado nesta aba. Adicione em \"Aeroportos monitorados\"."));
+    } else if (!synced.length) {
+      kids.push(emptyBox(ICON.alert, "Ainda não há NOTAMs: nenhum aeroporto desta aba foi consultado com sucesso. Clique em \"Atualizar agora\"."));
+    } else if (!r) {
+      const partial = synced.length < aps.length ? ` (nos ${synced.length} aeroportos consultados com sucesso)` : "";
+      const msg = { unread: `Nenhum NOTAM não lido${partial}. Tudo tratado!`, read: "Nenhum NOTAM marcado como lido.", all: `Nenhum NOTAM ativo${partial}.` }[ibState];
+      kids.push(emptyBox(ICON.ok, msg));
+    } else {
+      const ap = aps.find(a => a.icao === ibIcao) || { name: "", unread: 0, total: 0 };
+      const empty = { unread: `Nenhum NOTAM não lido em ${ibIcao}. Tudo tratado!`, read: `Nenhum NOTAM marcado como lido em ${ibIcao}.`, all: `Nenhum NOTAM ativo em ${ibIcao}.` }[ibState];
       kids.push(el("section", { className: "card ap" },
-        el("div", { className: "card-head" }, el("div", {}, el("h3", {}, `${icao} `, el("small", { textContent: ap.name })),
+        el("div", { className: "card-head" }, el("div", {}, el("h3", {}, `${ibIcao} `, el("small", { textContent: ap.name })),
           el("p", { textContent: `${ap.unread} não lidos de ${ap.total} ativos${ap.last_sync_at ? ` · consultado em ${fmtSeen(ap.last_sync_at)}` : ""}` }))),
-        ...list.map(ibItem)));
+        ...(r.notams.length ? r.notams.map(ibItem)
+          : [el("p", { className: "pad", textContent: $("ib-rwy").checked ? `${empty.replace(/\.( Tudo tratado!)?$/, "")} entre as restrições de pista.` : empty })])));
     }
     show(out, ...kids);
   } catch (err) { if (ticket === ibLoading) show(out, errBox(err.message)); }
