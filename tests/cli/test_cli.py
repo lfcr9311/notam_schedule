@@ -8,4 +8,5 @@ def test_cli(tmp_path, capsys):
     rc = main([str(EX / "schedule_period.csv"), "--notam-dir", str(FIX), "-o", str(out), "--csv",
                "--categories", "RUNWAY_CLOSED,LENGTH_REDUCTION"])
     assert rc == 0 and out.exists() and out.with_suffix(".csv").exists()
-    assert "MCO" in capsys.readouterr().out
+    printed = capsys.readouterr().out
+    assert "Fora da cobertura" not in printed          # KMCO now comes from the FAA (fixtures/faa/faa_KMCO.json)

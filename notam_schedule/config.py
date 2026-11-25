@@ -1,4 +1,4 @@
-"""Configuration: project folders and AISWEB API credentials (environment variables or .env)."""
+"""Configuration: project folders and NOTAM source credentials (AISWEB, FAA NMS) from the environment or .env."""
 from __future__ import annotations
 
 import os
@@ -6,6 +6,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 DEFAULT_BASE_URL = "https://aisweb.decea.mil.br/api/"
+# FAA NOTAM Management Service (NMS-API), production. Staging: https://api-staging.cgifederal-aim.com
+FAA_DEFAULT_API_URL = "https://api-nms.aim.faa.gov/nmsapi"
+FAA_DEFAULT_AUTH_URL = "https://api-nms.aim.faa.gov/v1/auth/token"
 
 # Project folders. Anchored to the project root (or $NOTAM_HOME), never to the current directory,
 # so the CLI behaves the same when run from cron, an IDE or another folder.
@@ -18,7 +21,11 @@ RAW_DIR = DATA_DIR / "raw"                   # every distinct AISWEB response, i
 CORPUS_DB = DATA_DIR / "corpus" / "notams.sqlite"
 RUNS_DB = DATA_DIR / "runs" / "runs.sqlite"  # analysis runs and their impacts (for "what changed")
 WEB_REPORTS_DIR = DATA_DIR / "reports"      # Excel/CSV of schedules sent through the web page
+ALERTS_DB = DATA_DIR / "alerts" / "alerts.sqlite"  # e-mail digests already built (RSS feed)
+# watched airports + their NOTAMs + read marks. Production: DATABASE_URL (PostgreSQL)
+NOTAM_DB_URL = f"sqlite:///{DATA_DIR / 'notams.db'}"
 AIRPORTS_FILE = REFERENCE_DIR / "airports.csv"
+ALERT_AIRPORTS_FILE = REFERENCE_DIR / "alert_airports.txt"  # airports of the twice-a-day digest
 OUTPUT_DIR = PROJECT_ROOT / "output"         # reports
 REVIEW_FILE = OUTPUT_DIR / "review" / "review.csv"
 GOLD_FILE = OUTPUT_DIR / "review" / "gold.csv"
@@ -60,3 +67,24 @@ class AiswebConfig:
                 "AISWEB_API_PASS no ambiente ou no arquivo .env (veja .env.example)."
             )
         return cls(key, pwd, os.environ.get("AISWEB_BASE_URL", DEFAULT_BASE_URL))
+
+
+@dataclass(frozen=True)
+class FaaConfig:
+    """FAA NMS-API credentials (client_id = KEY, client_secret = SECRET of the onboarding spreadsheet)."""
+    client_id: str
+    client_secret: str
+    api_url: str = FAA_DEFAULT_API_URL
+    auth_url: str = FAA_DEFAULT_AUTH_URL
+
+    @classmethod
+    def from_env(cls) -> "FaaConfig | None":
+        """None when FAA_NMS_CLIENT_ID/FAA_NMS_CLIENT_SECRET are not set (international NOTAMs disabled)."""
+        load_dotenv()
+        cid = os.environ.get("FAA_NMS_CLIENT_ID", "").strip()
+        secret = os.environ.get("FAA_NMS_CLIENT_SECRET", "").strip()
+        if not cid or not secret:
+            return None
+        return cls(cid, secret,
+                   os.environ.get("FAA_NMS_API_URL", "").strip() or FAA_DEFAULT_API_URL,
+                   os.environ.get("FAA_NMS_AUTH_URL", "").strip() or FAA_DEFAULT_AUTH_URL)

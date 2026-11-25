@@ -21,7 +21,7 @@ def add_sheet(wb, ctx: ReportContext) -> None:
     ]
     info += [[k, str(v)] for k, v in params.items()]
     if res.out_of_coverage:
-        info.append(["Fora da cobertura DECEA (não consultados)", ", ".join(res.out_of_coverage)])
+        info.append(["Fora da cobertura (sem fonte de NOTAM)", ", ".join(res.out_of_coverage)])
     for ap, err in sorted(res.errors.items()):
         info.append([f"ERRO na consulta {ap}", err])
     info.append(["Abas", "Sumário Executivo → visão geral; Resumo por Dia/Aeroporto/NOTAM → consolidados; "

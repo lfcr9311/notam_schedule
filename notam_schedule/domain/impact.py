@@ -103,7 +103,7 @@ class AnalysisResult:
     runway_notams: dict[str, list[RunwayNotam]]
     discarded: dict[str, list[Notam]]        # NOTAMs mentioning a runway that did not pass the filter
     errors: dict[str, str]                   # ICAO -> query error
-    out_of_coverage: list[str]               # non-Brazilian / unknown airports
+    out_of_coverage: list[str]               # airports without a NOTAM source / unknown
     window: tuple[datetime, datetime]
 
 

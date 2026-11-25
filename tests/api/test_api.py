@@ -14,12 +14,14 @@ WINDOW = {"from": "2026-11-17T00:00:00Z", "to": "2026-11-19T00:00:00Z"}
 
 
 @pytest.fixture(scope="module")
-def client():
-    return TestClient(create_app(AiswebClient(None, offline_dir=FIX), "offline", api_key="segredo"))
+def client(tmp_path_factory):
+    tmp = tmp_path_factory.mktemp("api")
+    return TestClient(create_app(AiswebClient(None, offline_dir=FIX), "offline", api_key="segredo",
+                                 alerts_db=tmp / "alerts.sqlite"))
 
 
 def test_health_needs_no_key(client):
-    assert client.get("/api/health").json() == {"status": "ok", "version": "0.1.0", "source": "offline"}
+    assert client.get("/api/health").json() == {"status": "ok", "version": "0.1.0", "source": "offline", "international": False}
 
 
 def test_key_is_required(client):
@@ -79,3 +81,27 @@ def test_contract_file_matches_the_code():
     """contracts/notam-api.openapi.json is the published contract. If this fails, the API changed:
     confirm the change is intended and run `notam-schedule-api --export-openapi`."""
     assert json.loads(CONTRACT.read_text(encoding="utf-8")) == openapi_document()
+
+
+def test_international_airports_come_from_the_faa(tmp_path):
+    from notam_schedule.ingestion.faa import FaaNmsClient
+    from notam_schedule.ingestion.routing import RoutedSource
+    src = RoutedSource(AiswebClient(None, offline_dir=FIX), FaaNmsClient(None, offline_dir=FIX / "faa"))
+    c = TestClient(create_app(src, "offline", api_key="segredo", alerts_db=tmp_path / "alerts.sqlite"))
+    assert c.get("/api/health").json()["international"] is False    # offline FAA does not cover every airport
+    r = c.get("/api/notams", headers=KEY, params={"icao": "SBKP,SCEL,KMCO,LFPG", **WINDOW})
+    by = {a["icao"]: a for a in r.json()["airports"]}
+    assert (by["SBKP"]["source"], by["SCEL"]["source"], by["KMCO"]["source"]) == ("AISWEB", "FAA", "FAA")
+    assert [n["number"] for n in by["SCEL"]["notams"]] == ["A4321/26"]           # A4000/26 was replaced
+    assert by["SCEL"]["notams"][0]["closure"]["type"] == "total" and by["SCEL"]["other_notams"] == []
+    assert [n["number"] for n in by["KMCO"]["notams"]] == ["11/045"]
+    assert by["LFPG"]["status"] == "out_of_coverage"
+
+    every = c.get("/api/notams", headers=KEY, params={"icao": "SCEL,KMCO", "categories": "all",
+                                                       "include_other": "true", **WINDOW}).json()
+    other = {a["icao"]: [n["number"] for n in a["other_notams"]] for a in every["airports"]}
+    assert other == {"KMCO": ["11/050"], "SCEL": ["A4400/26"]}                   # ILS (Dec 20) is outside the window
+
+    leg = {"airport": "KMCO", "operation": "arrival", "time": "2026-11-17T03:00:00Z"}
+    res = c.post("/api/runway-check", headers=KEY, json={"legs": [leg], "margin_minutes": 0}).json()["legs"][0]
+    assert res["status"] == "ok" and res["restricted"] and [n["number"] for n in res["notams"]] == ["11/045"]

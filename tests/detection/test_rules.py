@@ -84,3 +84,10 @@ def test_closure_details_operations_ppr_and_exception():
     assert classify(mk(e="RWY 15 CLSD FOR LDG")).closed_ops == "LDG"
     assert classify(mk(e="PISTA 15/33 FECHADA PARA DECOLAGENS")).closed_ops == "TKOF"
     assert classify(mk(e="PISTA 10/28 INTERDITADA PARA POUSOS E DECOLAGENS")).closed_ops == ""
+
+
+def test_runway_only_bounding_a_taxiway_segment_is_not_a_runway_notam():
+    assert classify(mk("TWY D BTN APN COMMERCIAL AND RWY 11/29 CLSD WIP MAINT")).categories == []
+    assert classify(mk("TWY C ENTRE O PATIO E A RWY 11/29 FECHADA")).categories == []
+    assert classify(mk("TWY A CLSD. RWY 11/29 CLSD")).categories == ["RUNWAY_CLOSED"]
+    assert classify(mk("RWY 17L/35R CLSD BTN TWY B AND TWY C")).categories == ["LENGTH_REDUCTION"]

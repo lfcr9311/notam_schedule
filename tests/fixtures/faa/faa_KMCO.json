@@ -1,0 +1,87 @@
+{
+ "status": "Success",
+ "data": {
+  "geojson": [
+   {
+    "type": "Feature",
+    "properties": {
+     "coreNOTAMData": {
+      "notamEvent": {
+       "encoding": "ANNOTATION"
+      },
+      "notam": {
+       "id": "NMS_ID_2000000000000001",
+       "series": "",
+       "number": "11/045",
+       "year": "2026",
+       "type": "N",
+       "issued": "2026-11-10T12:00:00.000Z",
+       "affectedFir": "ZJX",
+       "selectionCode": "QMRLC",
+       "location": "MCO",
+       "effectiveStart": "2026-11-17T02:00:00.000Z",
+       "effectiveEnd": "2026-11-17T10:00:00.000Z",
+       "estimated": "false",
+       "text": "RWY 18L/36R CLSD",
+       "classification": "DOM",
+       "accountId": "XYZ",
+       "lastUpdated": "2026-11-10T12:00:00.000Z",
+       "icaoLocation": "KMCO",
+       "schedule": ""
+      },
+      "notamTranslation": [
+       {
+        "type": "LOCAL_FORMAT",
+        "domestic_message": "!MCO 11/045 MCO RWY 18L/36R CLSD 2611170200-2611171000"
+       }
+      ]
+     }
+    },
+    "geometry": {
+     "type": "GeometryCollection",
+     "geometries": []
+    }
+   },
+   {
+    "type": "Feature",
+    "properties": {
+     "coreNOTAMData": {
+      "notamEvent": {
+       "encoding": "ANNOTATION"
+      },
+      "notam": {
+       "id": "NMS_ID_2000000000000002",
+       "series": "",
+       "number": "11/050",
+       "year": "2026",
+       "type": "N",
+       "issued": "2026-11-10T12:00:00.000Z",
+       "affectedFir": "ZJX",
+       "selectionCode": "QOBCE",
+       "location": "MCO",
+       "effectiveStart": "2026-11-10T00:00:00.000Z",
+       "effectiveEnd": "PERM",
+       "estimated": "false",
+       "text": "OBST CRANE 3 FT AGL 1NM SW AER",
+       "classification": "DOM",
+       "accountId": "XYZ",
+       "lastUpdated": "2026-11-10T12:00:00.000Z",
+       "icaoLocation": "KMCO",
+       "schedule": ""
+      },
+      "notamTranslation": [
+       {
+        "type": "LOCAL_FORMAT",
+        "domestic_message": "!MCO 11/050 MCO OBST CRANE 3 FT AGL 1NM SW AER PERM"
+       }
+      ]
+     }
+    },
+    "geometry": {
+     "type": "GeometryCollection",
+     "geometries": []
+    }
+   }
+  ]
+ }
+}

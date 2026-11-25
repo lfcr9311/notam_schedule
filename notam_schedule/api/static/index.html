@@ -201,6 +201,9 @@
   .nt details summary { cursor: pointer; color: var(--accent); font-weight: 500; }
   .nt pre { white-space: pre-wrap; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .82rem; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin: 8px 0 0; }
   .nt ul { margin: 6px 0 0; padding-left: 18px; }
+  .nt pre.nt-text { margin: 0; }
+  .sub-head { border-top: 1px solid var(--line); padding: 12px 18px; background: var(--surface-2); color: var(--muted); font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .chip.src { font-weight: 600; }
   .tag.sev-CRITICAL { background: var(--b-closed); color: var(--b-closed-fg); }
   .tag.sev-HIGH { background: var(--b-wet); color: var(--b-wet-fg); }
   .tag.sev-MEDIUM, .tag.sev-LOW { background: var(--b-light); color: var(--b-light-fg); }
@@ -215,6 +218,22 @@
   a.ghost { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
   .opts { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; margin-top: 14px; }
   td.nowrap { white-space: nowrap; }
+  .field.check { flex-direction: row; align-items: center; gap: 6px; padding-bottom: 8px; }
+  .field.check > span { text-transform: none; letter-spacing: 0; font-size: .9rem; color: var(--text-2); font-weight: 500; }
+  .seg b { font-weight: 600; color: var(--muted); margin-left: 2px; }
+  .ib-aps { margin-top: 12px; font-size: .9rem; }
+  .ib-aps summary { cursor: pointer; color: var(--accent); font-weight: 500; margin-bottom: 8px; }
+  .chip.x button { background: none; border: 0; color: inherit; cursor: pointer; font: inherit; padding: 0 0 0 4px; }
+  .chip.err-chip { background: var(--b-wet); color: var(--b-wet-fg); }
+  .ib-n { border-top: 1px solid var(--line); padding: 12px 18px; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; }
+  .ib-n:first-child { border-top: 0; }
+  .ib-n.read { opacity: .62; }
+  .ib-n.rwy { box-shadow: inset 4px 0 0 var(--b-closed-fg); }
+  .ib-n input[type=checkbox] { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent); cursor: pointer; }
+  .ib-n .lbl { font-size: .72rem; color: var(--muted); text-align: center; grid-row: 2; }
+  .ib-n .body { display: grid; gap: 6px; min-width: 0; grid-row: 1 / span 2; grid-column: 2; }
+  .ib-n pre { white-space: pre-wrap; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .82rem; margin: 0; overflow-wrap: anywhere; }
+  .ib-n .meta { color: var(--muted); font-size: .8rem; }
 
   @media (max-width: 640px) {
     .card-head .controls { width: 100%; }
@@ -235,11 +254,12 @@
       <div class="logo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h6l-5 4 2 7-6-4-6 4 2-7-5-4h6z"/></svg></div>
       <div>
         <h1>Identificador de NOTAM</h1>
-        <p>Pistas e aeródromos fechados por NOTAM · AISWEB/DECEA</p>
+        <p>NOTAMs de pista e aeródromo · AISWEB/DECEA no Brasil · FAA no exterior</p>
       </div>
     </div>
     <nav id="tabs">
-      <button data-tab="cons" class="on">Consulta por aeroporto</button>
+      <button data-tab="inbox" class="on">NOTAMs a tratar</button>
+      <button data-tab="cons">Consulta por aeroporto</button>
       <button data-tab="check">Checar horário</button>
       <button data-tab="malha">Enviar malha</button>
       <button data-tab="nov">Novidades</button>
@@ -249,17 +269,41 @@
 
 <main class="wrap">
   <!-- ===== consulta por aeroporto ===== -->
-  <div class="panel" id="tab-cons">
+  <!-- ===== NOTAMs a tratar ===== -->
+  <div class="panel" id="tab-inbox">
+    <section class="card pad">
+      <div class="form">
+        <div class="field"><span>Mostrar</span><div class="seg" id="ib-state">
+          <button type="button" data-state="unread" class="on">Não lidos <b id="ib-n-unread"></b></button><button type="button" data-state="read">Lidos <b id="ib-n-read"></b></button><button type="button" data-state="all">Todos <b id="ib-n-all"></b></button></div></div>
+        <label class="field"><span>Aeroporto</span><select id="ib-icao"><option value="">Todos</option></select></label>
+        <label class="field check"><input type="checkbox" id="ib-rwy"> <span>Só restrições de pista</span></label>
+        <label class="field"><span>Seu nome</span><input id="ib-name" maxlength="80" placeholder="para marcar como lido" autocomplete="name"></label>
+        <button class="ghost" id="ib-sync" type="button">Atualizar agora</button>
+      </div>
+      <p class="hint" id="ib-hint">NOTAMs ativos dos aeroportos monitorados, atualizados às 9h e às 16h (Brasília). Marcar como lido vale para toda a equipe.</p>
+      <details class="ib-aps"><summary id="ib-aps-sum">Aeroportos monitorados</summary>
+        <div class="rwys" id="ib-aps"></div>
+        <form class="form" id="ib-add" style="margin-top:10px">
+          <label class="field"><span>Adicionar aeroporto</span><input id="ib-add-icao" maxlength="4" size="8" placeholder="SBSV ou SSA" autocomplete="off"></label>
+          <button class="ghost">Adicionar</button>
+        </form>
+      </details>
+    </section>
+    <div id="ib-out" class="panel"></div>
+  </div>
+
+  <!-- ===== consulta por aeroporto ===== -->
+  <div class="panel" id="tab-cons" hidden>
     <section class="card pad">
       <form class="form" id="cons-form">
         <label class="field grow"><span>Aeroportos (ICAO)</span><input id="cons-icao" value="SBSV, SBBE" autocomplete="off" required></label>
         <label class="field"><span>De</span><input type="date" id="cons-from" required></label>
         <label class="field"><span>Até</span><input type="date" id="cons-to" required></label>
         <label class="field"><span>Mostrar</span>
-          <select id="cons-cats"><option value="">Pista e aeródromo fechados</option><option value="all">Todas as restrições de pista</option></select></label>
+          <select id="cons-cats"><option value="everything">Todos os NOTAMs</option><option value="all">Todas as restrições de pista</option><option value="">Pista e aeródromo fechados</option></select></label>
         <button class="primary" id="cons-btn">Consultar</button>
       </form>
-      <p class="hint">Separe os aeroportos por vírgula. Horários dos NOTAMs em UTC, com a hora local do aeroporto ao lado.</p>
+      <p class="hint">Separe os aeroportos por vírgula. Aeroportos brasileiros vêm da AISWEB; os do exterior (ex.: SCEL, KMCO, LFPG), da FAA. Horários em UTC, com a hora local ao lado quando o fuso do aeroporto é conhecido.</p>
     </section>
     <div id="cons-out" class="panel"></div>
   </div>
@@ -305,7 +349,7 @@
           <select id="m-cats"><option value="">Pista e aeródromo fechados</option><option value="all">Todas as restrições de pista</option></select></label>
         <button class="primary" id="m-btn" disabled>Analisar malha</button>
       </div>
-      <p class="hint">Sem datas, analisa a malha inteira. A primeira análise consulta cada aeroporto na AISWEB e pode levar 1 a 2 minutos.</p>
+      <p class="hint">Sem datas, analisa a malha inteira. A primeira análise consulta cada aeroporto (AISWEB no Brasil, FAA no exterior) e pode levar 1 a 2 minutos.</p>
     </section>
     <div id="malha-out" class="panel"></div>
   </div>
@@ -388,7 +432,133 @@ for (const b of $("tabs").querySelectorAll("button")) b.onclick = () => {
     $("tab-" + o.dataset.tab).hidden = o !== b;
   }
   if (b.dataset.tab === "nov") loadChanges();
+  if (b.dataset.tab === "inbox") loadInbox();
 };
+
+// ---------- NOTAMs a tratar ----------
+let ibState = "unread";
+const NAME_KEY = "notam-analista";
+try { $("ib-name").value = localStorage.getItem(NAME_KEY) || ""; } catch { /* sem armazenamento local */ }
+$("ib-name").onchange = () => { try { localStorage.setItem(NAME_KEY, $("ib-name").value.trim()); } catch { /* idem */ } };
+for (const b of $("ib-state").querySelectorAll("button")) b.onclick = () => {
+  ibState = b.dataset.state;
+  for (const o of $("ib-state").querySelectorAll("button")) o.classList.toggle("on", o === b);
+  loadInbox();
+};
+$("ib-icao").onchange = () => loadInbox();
+$("ib-rwy").onchange = () => loadInbox();
+const fmtSeen = iso => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).replace(",", "");
+const jsonOpts = (method, body) => ({ method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+
+function ibItem(n) {
+  const validity = `${n.valid_from ? fmtUtc(n.valid_from) : "?"} → ${n.permanent ? "PERM" : n.valid_to ? fmtUtc(n.valid_to) : "?"}${n.estimated ? " (estimado)" : ""} UTC`;
+  const future = n.valid_from && new Date(n.valid_from) > new Date();
+  const box = el("input", { type: "checkbox", checked: !!n.read_at, title: n.read_at ? "Desmarcar (volta para não lidos)" : "Marcar como lido para a equipe" });
+  const meta = n.read_at ? `Lido por ${n.read_by} em ${fmtSeen(n.read_at)}` : `Visto pela primeira vez em ${fmtSeen(n.first_seen)}`;
+  const body = el("div", { className: "body" },
+    el("div", { className: "nt-top" }, el("b", { textContent: n.number }),
+      n.runway ? tag("closed", n.kind) : tag("conf", n.kind), future ? tag("conf", `começa ${fmtUtc(n.valid_from)} UTC`) : null,
+      n.source ? el("span", { className: "chip src", textContent: n.source }) : null),
+    el("pre", { textContent: n.text }),
+    el("div", { className: "meta", textContent: `Vigência ${validity}${n.schedule ? ` · Horário (D): ${n.schedule}` : ""}` }),
+    el("div", { className: "meta", textContent: meta }));
+  const row = el("div", { className: `ib-n${n.read_at ? " read" : ""}${n.runway ? " rwy" : ""}` }, box,
+    el("span", { className: "lbl", textContent: n.read_at ? "lido" : "" }), body);
+  box.onchange = async () => {
+    const name = $("ib-name").value.trim();
+    if (box.checked && !name) {
+      box.checked = false;
+      $("ib-hint").textContent = "Informe seu nome no campo \"Seu nome\" antes de marcar como lido: a equipe vê quem tratou cada NOTAM.";
+      $("ib-name").focus();
+      return;
+    }
+    box.disabled = true;
+    try {
+      await api(`web/inbox/${n.id}/read`, box.checked ? jsonOpts("PUT", { by: name }) : { method: "DELETE" });
+      await loadInbox(true);
+    } catch (err) { box.checked = !box.checked; box.disabled = false; $("ib-hint").textContent = err.message; }
+  };
+  return row;
+}
+
+function ibAirports(aps) {
+  const sel = $("ib-icao"), keep = sel.value;
+  sel.replaceChildren(el("option", { value: "", textContent: "Todos" }),
+    ...aps.map(a => el("option", { value: a.icao, textContent: `${a.icao}${a.unread ? ` (${a.unread})` : ""}` })));
+  sel.value = aps.some(a => a.icao === keep) ? keep : "";
+  $("ib-aps-sum").textContent = `Aeroportos monitorados (${aps.length})`;
+  $("ib-aps").replaceChildren(...aps.map(a => {
+    const rm = el("button", { type: "button", textContent: "×", title: `Parar de monitorar ${a.icao}`, ariaLabel: `Remover ${a.icao}` });
+    rm.onclick = async () => {
+      if (!confirm(`Parar de monitorar ${a.icao}? O histórico de NOTAMs fica guardado.`)) return;
+      try { await api(`web/airports/${a.icao}`, { method: "DELETE" }); loadInbox(); } catch (err) { $("ib-hint").textContent = err.message; }
+    };
+    return el("span", { className: `chip x${a.last_error ? " err-chip" : ""}`, title: a.last_error ? `Última consulta falhou: ${a.last_error}` : (a.name || "") },
+      `${a.icao}${a.name ? " · " + a.name : ""}`, rm);
+  }));
+}
+
+let ibLoading = 0;
+async function loadInbox(quiet) {
+  const out = $("ib-out"), ticket = ++ibLoading;
+  const q = new URLSearchParams({ state: ibState });
+  if ($("ib-icao").value) q.set("icao", $("ib-icao").value);
+  if ($("ib-rwy").checked) q.set("runway_only", "true");
+  if (!quiet) show(out, loading("Carregando NOTAMs…"));
+  try {
+    const r = await api(`web/inbox?${q}`);
+    if (ticket !== ibLoading) return;          // uma consulta mais nova já foi pedida
+    for (const k of ["unread", "read", "all"]) $(`ib-n-${k}`).textContent = r.counts[k];
+    ibAirports(r.airports);
+    const kids = [];
+    const failed = r.airports.filter(a => a.last_error);
+    if (failed.length) kids.push(warnBox(`Última consulta falhou em ${failed.map(a => a.icao).join(", ")}: os NOTAMs desses aeroportos podem estar desatualizados.`));
+    const never = r.airports.filter(a => !a.last_sync_at);
+    if (never.length) kids.push(warnBox(`Ainda não consultados: ${never.map(a => a.icao).join(", ")}. Clique em "Atualizar agora" ou aguarde as 9h/16h.`));
+    if (!r.notams.length) {
+      const msg = { unread: "Nenhum NOTAM não lido. Tudo tratado!", read: "Nenhum NOTAM marcado como lido.", all: "Nenhum NOTAM ativo." }[r.state];
+      kids.push(emptyBox(ICON.ok, msg));
+    }
+    const byAp = new Map();
+    for (const n of r.notams) { if (!byAp.has(n.icao)) byAp.set(n.icao, []); byAp.get(n.icao).push(n); }
+    for (const [icao, list] of byAp) {
+      const ap = r.airports.find(a => a.icao === icao) || { name: "", unread: 0, total: 0 };
+      kids.push(el("section", { className: "card ap" },
+        el("div", { className: "card-head" }, el("div", {}, el("h3", {}, `${icao} `, el("small", { textContent: ap.name })),
+          el("p", { textContent: `${ap.unread} não lidos de ${ap.total} ativos${ap.last_sync_at ? ` · consultado em ${fmtSeen(ap.last_sync_at)}` : ""}` }))),
+        ...list.map(ibItem)));
+    }
+    show(out, ...kids);
+  } catch (err) { if (ticket === ibLoading) show(out, errBox(err.message)); }
+}
+
+$("ib-sync").onclick = async () => {
+  const btn = $("ib-sync");
+  btn.disabled = true; btn.textContent = "Atualizando…";
+  $("ib-hint").textContent = "Consultando todos os aeroportos (AISWEB / FAA). Com muitos aeroportos pode levar alguns minutos.";
+  try {
+    const r = await api("web/inbox/sync", { method: "POST" });
+    const errs = Object.keys(r.errors);
+    $("ib-hint").textContent = `Atualizado às ${fmtSeen(r.synced_at)}: ${plural(r.new, "NOTAM novo", "NOTAMs novos")}, ${plural(r.ended, "saiu", "saíram")}` +
+      (errs.length ? ` · sem dados em ${errs.join(", ")}` : "") + ".";
+    await loadInbox();
+  } catch (err) { $("ib-hint").textContent = err.message; }
+  finally { btn.disabled = false; btn.textContent = "Atualizar agora"; }
+};
+
+$("ib-add").onsubmit = async e => {
+  e.preventDefault();
+  const code = $("ib-add-icao").value.trim();
+  if (!code) return;
+  try {
+    await api("web/airports", jsonOpts("POST", { icao: code }));
+    $("ib-add-icao").value = "";
+    $("ib-hint").textContent = `${code.toUpperCase()} adicionado. Os NOTAMs dele entram na próxima atualização.`;
+    loadInbox();
+  } catch (err) { $("ib-hint").textContent = err.message; }
+};
+
+loadInbox();
 
 // ---------- consulta por aeroporto ----------
 const today = new Date();
@@ -396,6 +566,8 @@ $("cons-from").value = isoDate(today);
 $("cons-to").value = isoDate(addDays(today, 15));
 $("check-date").value = isoDate(today);
 show($("cons-out"), emptyBox(ICON.search, "Informe os aeroportos e o período e clique em Consultar."));
+
+let showOther = true;
 
 function periodsText(periods, tz, limit = 8) {
   const items = periods.slice(0, limit).map(p => {
@@ -428,17 +600,34 @@ function notamItem(n, tz) {
       n.note ? el("p", { textContent: n.note }) : null));
 }
 
+function otherItem(n, tz) {
+  const validity = `${n.valid_from ? fmtUtc(n.valid_from) : "?"} → ${n.permanent ? "PERM" : n.valid_to ? fmtUtc(n.valid_to) : "?"}${n.valid_to_estimated ? " (estimado)" : ""} UTC`;
+  const periods = periodsText(n.active_periods, tz, 4);
+  return el("div", { className: "nt" },
+    el("div", { className: "nt-top" }, el("b", { textContent: n.number }), n.qcode ? tag("conf", `Q${n.qcode}`, "Código Q (assunto + condição)") : null),
+    el("pre", { className: "nt-text", textContent: n.text }),
+    el("dl", { className: "nt-meta" },
+      el("dt", { textContent: "Vigência" }), el("dd", { textContent: validity }),
+      ...(n.schedule ? [el("dt", { textContent: "Período (D)" }), el("dd", { textContent: n.schedule })] : []),
+      ...(n.schedule ? [el("dt", { textContent: "Ativo" }), el("dd", { textContent: periods.join(" · ") })] : [])));
+}
+
 function airportCard(a) {
   const title = el("h3", {}, `${a.icao} `, el("small", { textContent: a.name || "" }));
-  const right = a.status === "ok"
-    ? el("div", { className: "rwys" }, ...a.runways.map(r => el("span", { className: "chip", textContent: r.length_m ? `${r.ident} · ${r.length_m} m` : r.ident })))
-    : null;
-  const kids = [el("div", { className: "card-head" }, el("div", {}, title,
-    el("p", { textContent: a.status === "ok" ? plural(a.notams.length, "NOTAM de pista", "NOTAMs de pista") + " no período" : "" })), right)];
-  if (a.status === "out_of_coverage") kids.push(el("div", { className: "pad" }, warnBox("Fora da cobertura da AISWEB/DECEA: sem dados de NOTAM para este aeroporto.")));
+  const others = a.other_notams || [];
+  const right = el("div", { className: "rwys" },
+    a.source ? el("span", { className: "chip src", textContent: a.source === "FAA" ? "Fonte: FAA" : "Fonte: AISWEB", title: a.source === "FAA" ? "NOTAMs da FAA (NMS-API)" : "NOTAMs da AISWEB/DECEA" }) : null,
+    ...(a.status === "ok" ? a.runways.map(r => el("span", { className: "chip", textContent: r.length_m ? `${r.ident} · ${r.length_m} m` : r.ident })) : []));
+  const count = a.status !== "ok" ? "" : plural(a.notams.length, "NOTAM de pista", "NOTAMs de pista")
+    + (showOther ? ` e ${plural(others.length, "outro NOTAM", "outros NOTAMs")}` : "") + " no período";
+  const kids = [el("div", { className: "card-head" }, el("div", {}, title, el("p", { textContent: count })), right)];
+  if (a.status === "out_of_coverage") kids.push(el("div", { className: "pad" }, warnBox(`Sem dados de NOTAM para este aeroporto: ${a.error || "fora da cobertura"}`)));
   else if (a.status === "error") kids.push(el("div", { className: "pad" }, errBox(`Sem dados de NOTAM agora (${a.error}). Isso não significa que não há restrição.`)));
-  else if (!a.notams.length) kids.push(el("div", { className: "pad" }, emptyBox(ICON.ok, "Nenhum NOTAM de pista no período.")));
-  else kids.push(...a.notams.map(n => notamItem(n, a.timezone)));
+  else {
+    if (!a.notams.length) kids.push(el("div", { className: "pad" }, emptyBox(ICON.ok, "Nenhum NOTAM de pista no período.")));
+    else kids.push(...a.notams.map(n => notamItem(n, a.timezone)));
+    if (showOther && others.length) kids.push(el("div", { className: "sub-head", textContent: `Outros NOTAMs (${others.length})` }), ...others.map(n => otherItem(n, a.timezone)));
+  }
   return el("section", { className: "card ap" }, ...kids);
 }
 
@@ -446,15 +635,28 @@ $("cons-form").onsubmit = async e => {
   e.preventDefault();
   const btn = $("cons-btn"), out = $("cons-out");
   const q = new URLSearchParams({ icao: $("cons-icao").value, from: `${$("cons-from").value}T00:00:00Z`, to: `${$("cons-to").value}T23:59:00Z` });
-  if ($("cons-cats").value) q.set("categories", $("cons-cats").value);
+  const mode = $("cons-cats").value;
+  showOther = mode === "everything";
+  if (mode) q.set("categories", showOther ? "all" : mode);
+  if (showOther) q.set("include_other", "true");
   btn.disabled = true; btn.textContent = "Consultando…";
-  show(out, loading("Consultando a AISWEB…"));
+  show(out, loading("Consultando os NOTAMs (AISWEB / FAA)…"));
   try {
     const r = await api(`web/notams?${q}`);
     show(out, ...r.airports.map(airportCard));
   } catch (err) { show(out, errBox(err.message)); }
   finally { btn.disabled = false; btn.textContent = "Consultar"; }
 };
+
+// link dos e-mails de alerta: ...#icao=SBSV abre a consulta já preenchida
+{
+  const fromLink = new URLSearchParams(location.hash.slice(1)).get("icao");
+  if (fromLink && /^[A-Za-z]{4}(,[A-Za-z]{4})*$/.test(fromLink)) {
+    document.querySelector('#tabs button[data-tab="cons"]').click();
+    $("cons-icao").value = fromLink.toUpperCase();
+    $("cons-form").requestSubmit();
+  }
+}
 
 // ---------- checar horário ----------
 let checkOp = "departure";
@@ -470,7 +672,7 @@ $("check-form").onsubmit = async e => {
   const icao = $("check-icao").value.trim().toUpperCase();
   const time = `${$("check-date").value}T${$("check-time").value}:00Z`;
   btn.disabled = true; btn.textContent = "Checando…";
-  show(out, loading("Consultando a AISWEB…"));
+  show(out, loading("Consultando os NOTAMs (AISWEB / FAA)…"));
   try {
     const r = await api("web/check", { method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ legs: [{ airport: icao, operation: checkOp, time }], margin_minutes: Number($("check-margin").value) || 0 }) });
@@ -485,8 +687,8 @@ $("check-form").onsubmit = async e => {
       el("div", {}, el("div", { className: "big", textContent: "Sem pista disponível" }),
         el("div", { className: "small", textContent: `${when} · todas as pistas fechadas por NOTAM` })));
     else if (leg.restricted) verdict = el("div", { className: "verdict warn" }, svg(ICON.alert),
-      el("div", {}, el("div", { className: "big", textContent: `Pista disponível: ${(leg.open_runways || []).join(", ") || "verifique"}` }),
-        el("div", { className: "small", textContent: `${when} · há pista fechada por NOTAM` })));
+      el("div", {}, el("div", { className: "big", textContent: (leg.open_runways || []).length ? `Pista disponível: ${leg.open_runways.join(", ")}` : "Há pista fechada por NOTAM" }),
+        el("div", { className: "small", textContent: (leg.open_runways || []).length ? `${when} · há pista fechada por NOTAM` : when })));
     else verdict = el("div", { className: "verdict ok" }, svg(ICON.ok),
       el("div", {}, el("div", { className: "big", textContent: leg.open_runways ? `Todas as pistas disponíveis: ${leg.open_runways.join(", ")}` : "Nenhum fechamento por NOTAM" }),
         el("div", { className: "small", textContent: when })));
@@ -527,7 +729,7 @@ $("m-btn").onclick = async () => {
   if ($("m-to").value) q.set("date_to", $("m-to").value);
   if ($("m-cats").value) q.set("categories", $("m-cats").value);
   btn.disabled = true; btn.textContent = "Analisando…";
-  show(out, loading("Analisando a malha: consultando os NOTAMs de cada aeroporto na AISWEB…"));
+  show(out, loading("Analisando a malha: consultando os NOTAMs de cada aeroporto (AISWEB no Brasil, FAA no exterior)…"));
   try {
     const r = await api(`web/schedule?${q}`, { method: "POST", body: file,
       headers: { "content-type": "application/octet-stream", "x-filename": encodeURIComponent(file.name) } });
@@ -550,7 +752,7 @@ function scheduleView(r) {
     tile("Voos críticos", r.critical_flights, "sem pista ou AD fechado"),
     tile("Aeroportos sem dados", Object.keys(r.errors).length, "")));
   for (const [icao, msg] of Object.entries(r.errors)) kids.push(errBox(`${icao}: sem dados de NOTAM (${msg}). Isso não significa que não há restrição.`));
-  if (r.out_of_coverage.length) kids.push(warnBox(`Fora da cobertura da AISWEB/DECEA (não consultados): ${r.out_of_coverage.join(", ")}.`));
+  if (r.out_of_coverage.length) kids.push(warnBox(`Sem fonte de NOTAM (não consultados): ${r.out_of_coverage.join(", ")}.`));
 
   const c = r.changes;
   const changeText = !c.previous ? "Primeira análise registrada: a próxima mostra o que mudou."

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "NOTAM Schedule API",
-    "description": "NOTAMs de pista (AISWEB/DECEA): fechamentos por aeroporto e checagem de voos.",
+    "description": "NOTAMs (AISWEB/DECEA no Brasil, FAA NMS-API no exterior): fechamentos de pista por aeroporto, todos os NOTAMs e checagem de voos.",
     "version": "0.1.0"
   },
   "paths": {
@@ -12,7 +12,7 @@
           "status"
         ],
         "summary": "Health",
-        "description": "Liveness check. Does not call the AISWEB.",
+        "description": "Liveness check. Does not call the AISWEB or the FAA.",
         "operationId": "health_api_health_get",
         "responses": {
           "200": {
@@ -34,7 +34,7 @@
           "notams"
         ],
         "summary": "Notams",
-        "description": "Runway NOTAMs active in the window, per airport, with closure type, periods and confidence.\n\nAirports outside DECEA coverage or whose query failed come back with status out_of_coverage/error:\nthat means there is NO DATA for them, not that they have no restriction.",
+        "description": "Runway NOTAMs active in the window, per airport, with closure type, periods and confidence.\n\nBrazilian airports come from the AISWEB; the others from the FAA NMS-API (when the server has its\ncredentials). Airports without a source or whose query failed come back with status out_of_coverage/error:\nthat means there is NO DATA for them, not that they have no restriction.",
         "operationId": "notams_api_notams_get",
         "parameters": [
           {
@@ -112,6 +112,18 @@
               "title": "Categories"
             },
             "description": "Default: RUNWAY_CLOSED,AERODROME_CLOSED; 'all' = every category"
+          },
+          {
+            "name": "include_other",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Also return every non-runway NOTAM in other_notams",
+              "default": false,
+              "title": "Include Other"
+            },
+            "description": "Also return every non-runway NOTAM in other_notams"
           },
           {
             "name": "x-api-key",
@@ -218,6 +230,415 @@
         }
       }
     },
+    "/api/resumos": {
+      "post": {
+        "tags": [
+          "resumos"
+        ],
+        "summary": "Digest Now",
+        "description": "Build a NOTAM digest now (besides the scheduled 09:00/16:00), e.g. to test the Power Automate flow.",
+        "operationId": "digest_now_api_resumos_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Required when the server sets NOTAM_API_KEY",
+              "title": "X-Api-Key"
+            },
+            "description": "Required when the server sets NOTAM_API_KEY"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DigestInfo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web/alertas.rss": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Alerts Feed",
+        "description": "The last digests as RSS. Each item is one e-mail: every active NOTAM of the airport list.",
+        "operationId": "alerts_feed_web_alertas_rss_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/rss+xml": {}
+            }
+          }
+        }
+      }
+    },
+    "/web/resumos/{name}": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Digest View",
+        "description": "A digest as a page (/web/resumos/12) or as Excel (/web/resumos/12.xlsx).",
+        "operationId": "digest_view_web_resumos__name__get",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web/inbox": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Inbox",
+        "description": "Active NOTAMs of the watched airports. Read marks are shared by the whole team.",
+        "operationId": "inbox_web_inbox_get",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "unread",
+                "read",
+                "all"
+              ],
+              "type": "string",
+              "default": "unread",
+              "title": "State"
+            }
+          },
+          {
+            "name": "icao",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Icao"
+            }
+          },
+          {
+            "name": "runway_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Runway Only"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web/inbox/{notam_id}/read": {
+      "put": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Mark Read",
+        "operationId": "mark_read_web_inbox__notam_id__read_put",
+        "parameters": [
+          {
+            "name": "notam_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notam Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxNotam"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Mark Unread",
+        "operationId": "mark_unread_web_inbox__notam_id__read_delete",
+        "parameters": [
+          {
+            "name": "notam_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notam Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxNotam"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web/inbox/sync": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Sync Now",
+        "description": "Query every watched airport now. At most once every 2 minutes.",
+        "operationId": "sync_now_web_inbox_sync_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web/airports": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Watched",
+        "operationId": "watched_web_airports_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InboxAirport"
+                  },
+                  "type": "array",
+                  "title": "Response Watched Web Airports Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Add Airport",
+        "operationId": "add_airport_web_airports_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AirportAdd"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InboxAirport"
+                  },
+                  "type": "array",
+                  "title": "Response Add Airport Web Airports Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web/airports/{icao}": {
+      "delete": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Remove Airport",
+        "operationId": "remove_airport_web_airports__icao__delete",
+        "parameters": [
+          {
+            "name": "icao",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Icao"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InboxAirport"
+                  },
+                  "title": "Response Remove Airport Web Airports  Icao  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/web/notams": {
       "get": {
         "tags": [
@@ -290,6 +711,16 @@
                 }
               ],
               "title": "Categories"
+            }
+          },
+          {
+            "name": "include_other",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Other"
             }
           }
         ],
@@ -589,6 +1020,20 @@
   },
   "components": {
     "schemas": {
+      "AirportAdd": {
+        "properties": {
+          "icao": {
+            "type": "string",
+            "title": "Icao",
+            "description": "ICAO (SBSV) or IATA (SSA)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "icao"
+        ],
+        "title": "AirportAdd"
+      },
       "AirportNotams": {
         "properties": {
           "icao": {
@@ -622,6 +1067,18 @@
               "America/Bahia"
             ]
           },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "NOTAM provider: AISWEB (Brazil) or FAA (NMS-API, outside Brazil)"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -649,7 +1106,7 @@
             },
             "type": "array",
             "title": "Runways",
-            "description": "Runways published in ROTAER"
+            "description": "Runways published in ROTAER (Brazil only; empty for FAA airports)"
           },
           "notams": {
             "items": {
@@ -657,6 +1114,14 @@
             },
             "type": "array",
             "title": "Notams"
+          },
+          "other_notams": {
+            "items": {
+              "$ref": "#/components/schemas/OtherNotam"
+            },
+            "type": "array",
+            "title": "Other Notams",
+            "description": "Only with include_other=true: every non-runway NOTAM"
           }
         },
         "type": "object",
@@ -959,6 +1424,43 @@
         ],
         "title": "DaySummary"
       },
+      "DigestInfo": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "page": {
+            "type": "string",
+            "title": "Page",
+            "description": "The digest as a web page (Excel link inside)"
+          },
+          "feed": {
+            "type": "string",
+            "title": "Feed",
+            "description": "RSS feed that Power Automate reads"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "generated_at",
+          "page",
+          "feed"
+        ],
+        "title": "DigestInfo",
+        "description": "A NOTAM digest (the e-mail sent to the analysts through the RSS feed)."
+      },
       "Downloads": {
         "properties": {
           "xlsx": {
@@ -1008,6 +1510,12 @@
               "offline"
             ],
             "title": "Source"
+          },
+          "international": {
+            "type": "boolean",
+            "title": "International",
+            "description": "Whether NOTAMs outside Brazil (FAA NMS-API) are enabled",
+            "default": false
           }
         },
         "type": "object",
@@ -1131,6 +1639,249 @@
           "confidence"
         ],
         "title": "ImpactRow"
+      },
+      "InboxAirport": {
+        "properties": {
+          "icao": {
+            "type": "string",
+            "title": "Icao"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "last_sync_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error",
+            "description": "Last query failed: its NOTAMs may be out of date"
+          },
+          "unread": {
+            "type": "integer",
+            "title": "Unread"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "icao",
+          "name",
+          "last_sync_at",
+          "unread",
+          "total"
+        ],
+        "title": "InboxAirport"
+      },
+      "InboxCounts": {
+        "properties": {
+          "unread": {
+            "type": "integer",
+            "title": "Unread"
+          },
+          "read": {
+            "type": "integer",
+            "title": "Read"
+          },
+          "all": {
+            "type": "integer",
+            "title": "All"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unread",
+          "read",
+          "all"
+        ],
+        "title": "InboxCounts"
+      },
+      "InboxNotam": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "icao": {
+            "type": "string",
+            "title": "Icao"
+          },
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "runway": {
+            "type": "boolean",
+            "title": "Runway",
+            "description": "Runway/aerodrome restriction"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "runways": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Runways"
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          },
+          "permanent": {
+            "type": "boolean",
+            "title": "Permanent"
+          },
+          "estimated": {
+            "type": "boolean",
+            "title": "Estimated"
+          },
+          "schedule": {
+            "type": "string",
+            "title": "Schedule"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "first_seen": {
+            "type": "string",
+            "format": "date-time",
+            "title": "First Seen"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          },
+          "read_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "icao",
+          "number",
+          "source",
+          "runway",
+          "kind",
+          "severity",
+          "runways",
+          "valid_from",
+          "valid_to",
+          "permanent",
+          "estimated",
+          "schedule",
+          "text",
+          "first_seen",
+          "read_at",
+          "read_by"
+        ],
+        "title": "InboxNotam"
+      },
+      "InboxResponse": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "unread",
+              "read",
+              "all"
+            ],
+            "title": "State"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/InboxCounts"
+          },
+          "airports": {
+            "items": {
+              "$ref": "#/components/schemas/InboxAirport"
+            },
+            "type": "array",
+            "title": "Airports"
+          },
+          "notams": {
+            "items": {
+              "$ref": "#/components/schemas/InboxNotam"
+            },
+            "type": "array",
+            "title": "Notams"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "counts",
+          "airports",
+          "notams"
+        ],
+        "title": "InboxResponse"
       },
       "Leg": {
         "properties": {
@@ -1382,6 +2133,107 @@
         ],
         "title": "NotamsResponse"
       },
+      "OtherNotam": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "airport": {
+            "type": "string",
+            "title": "Airport"
+          },
+          "qcode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qcode",
+            "description": "Q-code letters without the leading Q (subject + condition)"
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          },
+          "permanent": {
+            "type": "boolean",
+            "title": "Permanent"
+          },
+          "valid_to_estimated": {
+            "type": "boolean",
+            "title": "Valid To Estimated"
+          },
+          "schedule": {
+            "type": "string",
+            "title": "Schedule",
+            "description": "Item D as published"
+          },
+          "schedule_understood": {
+            "type": "boolean",
+            "title": "Schedule Understood"
+          },
+          "active_periods": {
+            "items": {
+              "$ref": "#/components/schemas/Period"
+            },
+            "type": "array",
+            "title": "Active Periods"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "airport",
+          "valid_from",
+          "valid_to",
+          "permanent",
+          "valid_to_estimated",
+          "schedule",
+          "schedule_understood",
+          "active_periods",
+          "text"
+        ],
+        "title": "OtherNotam",
+        "description": "A NOTAM that is not a runway restriction (taxiway, lights, navaids, obstacles, airspace...)."
+      },
       "Period": {
         "properties": {
           "start": {
@@ -1401,6 +2253,22 @@
           "end"
         ],
         "title": "Period"
+      },
+      "ReadRequest": {
+        "properties": {
+          "by": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "By",
+            "description": "Who read it (name shown to the team)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "by"
+        ],
+        "title": "ReadRequest"
       },
       "RunInfo": {
         "properties": {
@@ -1892,6 +2760,48 @@
           "downloads"
         ],
         "title": "ScheduleResult"
+      },
+      "SyncInfo": {
+        "properties": {
+          "synced_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Synced At"
+          },
+          "airports": {
+            "type": "integer",
+            "title": "Airports"
+          },
+          "notams": {
+            "type": "integer",
+            "title": "Notams"
+          },
+          "new": {
+            "type": "integer",
+            "title": "New"
+          },
+          "ended": {
+            "type": "integer",
+            "title": "Ended"
+          },
+          "errors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Errors"
+          }
+        },
+        "type": "object",
+        "required": [
+          "synced_at",
+          "airports",
+          "notams",
+          "new",
+          "ended",
+          "errors"
+        ],
+        "title": "SyncInfo"
       },
       "ValidationError": {
         "properties": {

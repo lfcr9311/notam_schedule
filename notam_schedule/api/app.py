@@ -1,15 +1,19 @@
-"""HTTP API: runway NOTAMs per airport and runway checks for flight legs.
+"""HTTP API: NOTAMs per airport and runway checks for flight legs.
 
-    GET  /api/health          liveness (no AISWEB call)
-    GET  /api/notams          runway closures of one or more airports in a time window
+Sources: AISWEB (DECEA) for Brazilian airports, FAA NMS-API for the rest of the world (when configured).
+
+    GET  /api/health          liveness (no AISWEB/FAA call)
+    GET  /api/notams          runway closures (or every NOTAM) of one or more airports in a time window
     POST /api/runway-check    which closures apply to each flight leg (batch, for other systems)
     GET  /                    web page (identificador de NOTAM); its public endpoints are in web.py (/web/*)
 
 Configuration (environment):
     AISWEB_API_KEY / AISWEB_API_PASS   AISWEB credentials (or .env in the project root)
+    FAA_NMS_CLIENT_ID / _SECRET        FAA NMS-API credentials; without them airports outside Brazil are out of coverage
+    FAA_NMS_API_URL / FAA_NMS_AUTH_URL FAA environment (default: production api-nms.aim.faa.gov)
     NOTAM_API_KEY                      when set, every /api/* call except /api/health needs header X-API-Key
-    NOTAM_OFFLINE_DIR                  read <ICAO>.xml files instead of calling the AISWEB (tests, demos)
-    NOTAM_CACHE_MIN                    AISWEB response cache in minutes (default 60)
+    NOTAM_OFFLINE_DIR                  read <ICAO>.xml / faa_<ICAO>.json instead of calling the APIs (tests, demos)
+    NOTAM_CACHE_MIN                    AISWEB/FAA response cache in minutes (default 60)
     NOTAM_ROOT_PATH                    path prefix behind the proxy (e.g. /notam), so /docs works there
 """
 from __future__ import annotations
@@ -19,25 +23,30 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from typing import TYPE_CHECKING
+
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 
 from .. import __version__
-from ..config import CACHE_DIR, DEFAULT_BASE_URL, RAW_DIR, AiswebConfig, load_dotenv
+from ..config import CACHE_DIR, DEFAULT_BASE_URL, RAW_DIR, AiswebConfig, FaaConfig, load_dotenv
 from ..domain.categories import AERODROME_CLOSED, CATEGORIES, DESCRIPTION, RUNWAY_CLOSED
 from ..domain.confidence import impact_confidence, notam_confidence
 from ..domain.impact import SEVERITY_ORDER, Impact, leg_restrictions
 from ..domain.impact import RunwayNotam as DomainRunwayNotam
-from ..domain.ports import NotamSource
+from ..domain.ports import NotamSource, covers, source_name
 from ..domain.qcode import extract_qcode
 from ..ingestion.airports import AirportDB
-from ..ingestion.aisweb import AiswebClient
-from ..pipelines.analyze import collect_runway_notams, split_coverage
+from ..ingestion.sources import build_source
+from ..pipelines.analyze import OtherNotam, collect_notams, collect_runway_notams, split_coverage
 from ..reporting.formatting import describe
 from ..storage.raw_archive import FileRawArchive
 from . import schemas as s
 
 UTC = timezone.utc
+
+if TYPE_CHECKING:
+    from ..storage.notam_db import NotamDB
 DEFAULT_CATEGORIES = [RUNWAY_CLOSED, AERODROME_CLOSED]
 DEFAULT_DAYS, MAX_DAYS, MAX_AIRPORTS = 15, 62, 50
 OPERATION_SIDE = {"departure": "ORIGIN", "arrival": "DESTINATION"}
@@ -45,17 +54,28 @@ OPS = {"": "both", "LDG": "landing", "TKOF": "takeoff"}
 
 
 def default_source() -> tuple[NotamSource, str]:
-    """AISWEB client from the environment, or offline files when NOTAM_OFFLINE_DIR is set."""
+    """AISWEB (+ FAA when configured) from the environment, or offline files when NOTAM_OFFLINE_DIR is set."""
     load_dotenv()
     ttl = int(os.getenv("NOTAM_CACHE_MIN", "60"))
     offline = os.getenv("NOTAM_OFFLINE_DIR", "").strip()
     if offline:
-        return AiswebClient(None, offline_dir=offline), "offline"
+        return build_source(None, offline_dir=offline), "offline"
     key, pwd = os.getenv("AISWEB_API_KEY", "").strip(), os.getenv("AISWEB_API_PASS", "").strip()
     if not key or not pwd:
         raise RuntimeError("AISWEB_API_KEY/AISWEB_API_PASS não configuradas (ou defina NOTAM_OFFLINE_DIR).")
     config = AiswebConfig(key, pwd, os.getenv("AISWEB_BASE_URL", DEFAULT_BASE_URL))
-    return AiswebClient(config, cache_dir=CACHE_DIR, cache_ttl_min=ttl, archive=FileRawArchive(RAW_DIR)), "aisweb"
+    source = build_source(config, FaaConfig.from_env(), cache_dir=CACHE_DIR, cache_ttl_min=ttl,
+                          archive=FileRawArchive(RAW_DIR))
+    return source, "aisweb"
+
+
+def _outside_message(source: NotamSource) -> str:
+    intl = getattr(source, "international", None)
+    if intl is None:
+        return "Fora do Brasil: a consulta internacional (FAA) não está configurada no servidor."
+    if getattr(intl, "offline_dir", None) is not None:
+        return "Modo offline (arquivos de exemplo): não há resposta da FAA salva para este aeroporto."
+    return "Sem fonte de NOTAM para este código."
 
 
 def _categories(values: list[str] | None) -> set[str] | None:
@@ -102,9 +122,19 @@ def _notam(rn: DomainRunwayNotam, icao: str) -> s.RunwayNotam:
         ml_probability=c.prob, confidence=_confidence(notam_confidence(rn)), note=rn.note, duplicates=rn.duplicates)
 
 
+def _other(o: OtherNotam, icao: str) -> s.OtherNotam:
+    n = o.notam
+    return s.OtherNotam(
+        id=f"{icao}|{n.number}", number=n.number, airport=icao, qcode=extract_qcode(n.raw), valid_from=n.start,
+        valid_to=n.end, permanent=n.permanent, valid_to_estimated=n.end_estimated, schedule=n.d,
+        schedule_understood=o.d_parsed, active_periods=_periods(o.intervals), text=n.e, note=o.note)
+
+
 def query_notams(source: NotamSource, airports: AirportDB, icao: list[str], start: datetime | None,
-                 end: datetime | None, categories: list[str] | None) -> s.NotamsResponse:
-    """Shared by GET /api/notams (with key) and GET /web/notams (web page)."""
+                 end: datetime | None, categories: list[str] | None, include_other: bool = False) -> s.NotamsResponse:
+    """Shared by GET /api/notams (with key) and GET /web/notams (web page).
+
+    include_other: also return every NOTAM that is not a runway restriction (other_notams)."""
     codes = sorted({c.strip().upper() for item in icao for c in item.split(",") if c.strip()})
     bad = [c for c in codes if len(c) != 4 or not c.isalpha()]
     if bad or not codes:
@@ -117,14 +147,16 @@ def query_notams(source: NotamSource, airports: AirportDB, icao: list[str], star
     if w_end <= w_start or w_end - w_start > timedelta(days=MAX_DAYS):
         raise HTTPException(422, f"Janela inválida: 'to' deve ser depois de 'from' e no máximo {MAX_DAYS} dias.")
     cats = _categories(categories)
-    query, outside = split_coverage(codes)
-    found, _, errors = collect_runway_notams(source, query, w_start, w_end, cats)
+    query, outside = split_coverage(codes, source)
+    got = collect_notams(source, query, w_start, w_end, cats, keep_other=include_other)
+    found, errors = got.runway, got.errors
     out = []
     for code in codes:
         ap = airports.by_icao.get(code)
-        info = dict(icao=code, name=ap.name if ap else None, timezone=ap.tz if ap else None)
+        info = dict(icao=code, name=ap.name if ap else None, timezone=ap.tz if ap else None,
+                    source=source_name(source, code) if code in query else None)
         if code in outside:
-            out.append(s.AirportNotams(**info, status="out_of_coverage", error="Fora da cobertura da AISWEB/DECEA."))
+            out.append(s.AirportNotams(**info, status="out_of_coverage", error=_outside_message(source)))
         elif code in errors:
             out.append(s.AirportNotams(**info, status="error", error=errors[code]))
         else:
@@ -132,7 +164,9 @@ def query_notams(source: NotamSource, airports: AirportDB, icao: list[str], star
             rwys = next((r.airport_runways for r in rns if r.airport_runways), None) or source.runways(code)
             out.append(s.AirportNotams(
                 **info, status="ok", runways=[s.Runway(ident=r.ident, length_m=r.length, width_m=r.width) for r in rwys],
-                notams=[_notam(rn, code) for rn in rns]))
+                notams=[_notam(rn, code) for rn in rns],
+                other_notams=[_other(o, code) for o in sorted(got.other.get(code, []),
+                                                               key=lambda o: o.notam.start or w_start)]))
     return s.NotamsResponse(generated_at=datetime.now(UTC), window=s.Period(start=w_start, end=w_end),
                             categories=sorted(cats) if cats else ["all"], airports=out)
 
@@ -143,7 +177,7 @@ def check_legs(source: NotamSource, req: s.RunwayCheckRequest) -> s.RunwayCheckR
     margin = timedelta(minutes=req.margin_minutes)
     times = [_utc(leg.time) for leg in req.legs]
     w_start, w_end = min(times) - margin - timedelta(days=1), max(times) + margin + timedelta(days=1)
-    query, outside = split_coverage(leg.airport for leg in req.legs)
+    query, outside = split_coverage((leg.airport for leg in req.legs), source)
     found, _, errors = collect_runway_notams(source, query, w_start, w_end, cats)
     published: dict[str, list[str] | None] = {}
     results = []
@@ -152,7 +186,7 @@ def check_legs(source: NotamSource, req: s.RunwayCheckRequest) -> s.RunwayCheckR
         if leg.airport in outside or leg.airport in errors:
             status = "out_of_coverage" if leg.airport in outside else "error"
             results.append(s.LegResult(**base, status=status,
-                                       error=errors.get(leg.airport, "Fora da cobertura da AISWEB/DECEA."),
+                                       error=errors.get(leg.airport, _outside_message(source)),
                                        restricted=False, no_runway=False))
             continue
         rns = found.get(leg.airport, [])
@@ -180,18 +214,47 @@ STATIC = Path(__file__).parent / "static"
 
 def create_app(source: NotamSource | None = None, source_kind: str = "aisweb", api_key: str | None = None,
                airports: AirportDB | None = None, runs_db: str | Path | None = None,
-               reports_dir: str | Path | None = None) -> FastAPI:
-    """source/api_key default to the environment (see module docstring); tests inject them."""
+               reports_dir: str | Path | None = None, alerts_db: str | Path | None = None,
+               schedule_digest: bool | None = None, notam_db: "NotamDB | None" = None) -> FastAPI:
+    """source/api_key default to the environment (see module docstring); tests inject them.
+
+    schedule_digest: build the twice-a-day NOTAM digest in a background thread (default: on when the source comes
+    from the environment and NOTAM_DIGEST is not 'off'; tests leave it off and call POST /api/resumos).
+    notam_db: watched airports + NOTAMs + read marks (default: DATABASE_URL, else SQLite in data/)."""
+    from contextlib import asynccontextmanager
+
+    from ..config import ALERTS_DB
+    from ..storage.alerts import DigestStore
+    from ..storage.notam_db import NotamDB
+    from .digest import DigestScheduler, alert_airports, build_digest, public_url
     from .web import build_router
 
+    if schedule_digest is None:
+        schedule_digest = source is None and os.getenv("NOTAM_DIGEST", "on").strip().lower() != "off"
     if source is None:
         source, source_kind = default_source()
     if api_key is None:
         api_key = os.getenv("NOTAM_API_KEY", "").strip() or None
     airports = airports or AirportDB.default()
 
-    app = FastAPI(title="NOTAM Schedule API", version=__version__,
-                  description="NOTAMs de pista (AISWEB/DECEA): fechamentos por aeroporto e checagem de voos.")
+    digests = DigestStore(alerts_db or ALERTS_DB)
+    db = notam_db or NotamDB()
+    seed = alert_airports(airports)            # first run: the list file becomes the watched airports
+    db.seed_airports([(i, airports.by_icao[i].name if i in airports.by_icao else "") for i in seed],
+                     datetime.now(UTC))
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        scheduler = DigestScheduler(digests, db, source, airports, public_url()) if schedule_digest else None
+        if scheduler:
+            scheduler.start()
+        yield
+        if scheduler:
+            scheduler.stop.set()
+
+    app = FastAPI(title="NOTAM Schedule API", version=__version__, lifespan=lifespan,
+                  description="NOTAMs (AISWEB/DECEA no Brasil, FAA NMS-API no exterior): fechamentos de pista por "
+                              "aeroporto, todos os NOTAMs e checagem de voos.")
 
     def require_key(x_api_key: str | None = Header(None, description="Required when the server sets NOTAM_API_KEY")):
         if api_key and not (x_api_key and secrets.compare_digest(x_api_key, api_key)):
@@ -203,8 +266,8 @@ def create_app(source: NotamSource | None = None, source_kind: str = "aisweb", a
 
     @app.get("/api/health", response_model=s.Health, tags=["status"])
     def health():
-        """Liveness check. Does not call the AISWEB."""
-        return s.Health(status="ok", version=__version__, source=source_kind)
+        """Liveness check. Does not call the AISWEB or the FAA."""
+        return s.Health(status="ok", version=__version__, source=source_kind, international=covers(source, "KJFK"))
 
     @app.get("/api/notams", response_model=s.NotamsResponse, tags=["notams"], dependencies=[Depends(require_key)])
     def notams(
@@ -213,13 +276,15 @@ def create_app(source: NotamSource | None = None, source_kind: str = "aisweb", a
         start: datetime | None = Query(None, alias="from", description="Window start (UTC). Default: now"),
         end: datetime | None = Query(None, alias="to", description=f"Window end (UTC). Default: start + {DEFAULT_DAYS} days"),
         categories: list[str] | None = Query(None, description="Default: RUNWAY_CLOSED,AERODROME_CLOSED; 'all' = every category"),
+        include_other: bool = Query(False, description="Also return every non-runway NOTAM in other_notams"),
     ):
         """Runway NOTAMs active in the window, per airport, with closure type, periods and confidence.
 
-        Airports outside DECEA coverage or whose query failed come back with status out_of_coverage/error:
+        Brazilian airports come from the AISWEB; the others from the FAA NMS-API (when the server has its
+        credentials). Airports without a source or whose query failed come back with status out_of_coverage/error:
         that means there is NO DATA for them, not that they have no restriction.
         """
-        return query_notams(source, airports, icao, start, end, categories)
+        return query_notams(source, airports, icao, start, end, categories, include_other)
 
     @app.post("/api/runway-check", response_model=s.RunwayCheckResponse, tags=["notams"],
               dependencies=[Depends(require_key)])
@@ -232,6 +297,15 @@ def create_app(source: NotamSource | None = None, source_kind: str = "aisweb", a
         """
         return check_legs(source, req)
 
+    @app.post("/api/resumos", response_model=s.DigestInfo, tags=["resumos"], dependencies=[Depends(require_key)])
+    def digest_now(request: Request):
+        """Build a NOTAM digest now (besides the scheduled 09:00/16:00), e.g. to test the Power Automate flow."""
+        now = datetime.now(UTC).replace(second=0, microsecond=0)
+        base = public_url() or str(request.base_url).rstrip("/") + "/"
+        d = digests.get(build_digest(digests, db, source, airports, now, base))
+        return s.DigestInfo(id=d["id"], title=d["title"], generated_at=d["generated_at"],
+                            page=f"{base}web/resumos/{d['id']}", feed=f"{base}web/alertas.rss")
+
     paths = {k: v for k, v in (("runs_db", runs_db), ("reports_dir", reports_dir)) if v is not None}
-    app.include_router(build_router(source, airports, **paths))
+    app.include_router(build_router(source, airports, digests=digests, notam_db=db, **paths))
     return app

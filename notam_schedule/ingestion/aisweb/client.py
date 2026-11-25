@@ -9,7 +9,7 @@ from pathlib import Path
 import requests
 
 from ...config import CACHE_DIR, AiswebConfig
-from ...domain.airport import Runway
+from ...domain.airport import BR_PREFIXES, Runway
 from ...domain.notam import Notam
 from ...domain.ports import RawArchive
 from .parser import parse_notam_xml, parse_rotaer_xml, response_fingerprint
@@ -80,12 +80,20 @@ class AiswebClient:
         raise AiswebError(f"Não foi possível consultar a API para {icao}: {last_exc}")
 
     # ---------------------------------------------------------------- endpoints
+    def covers(self, icao: str) -> bool:
+        """AISWEB is used only for Brazilian airports; NOTAMs abroad come from the FAA (ingestion.faa)."""
+        return icao.upper().startswith(BR_PREFIXES)
+
     def notams(self, icao: str) -> list[Notam]:
+        if not self.covers(icao):
+            raise AiswebError(f"{icao} não é brasileiro: NOTAMs internacionais vêm da FAA, não da AISWEB.")
         notams = parse_notam_xml(self._get("notam", icao, icaocode=icao))
         # The API may return NOTAMs for other locations (e.g. FIR); keep only the aerodrome's
         return [n for n in notams if not n.loc or n.loc == icao]
 
     def runways(self, icao: str) -> list[Runway]:
+        if not self.covers(icao):
+            return []
         try:
             text = self._get("rotaer", icao, icaoCode=icao)
         except AiswebError as exc:

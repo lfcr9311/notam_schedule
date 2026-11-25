@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
-from .airport import Runway
+from .airport import BR_PREFIXES, Runway
 from .categories import Classification
 from .notam import Notam
 
@@ -22,6 +22,18 @@ class NotamSource(Protocol):
     def notams(self, icao: str) -> list[Notam]: ...
 
     def runways(self, icao: str) -> list[Runway]: ...
+
+
+def covers(source: NotamSource, icao: str) -> bool:
+    """Whether `source` has NOTAM data for `icao`. Sources may implement covers(); default: Brazil only (AISWEB)."""
+    fn = getattr(source, "covers", None)
+    return bool(fn(icao)) if callable(fn) else icao.startswith(BR_PREFIXES)
+
+
+def source_name(source: NotamSource, icao: str) -> str:
+    """Label of the provider of `icao` ("AISWEB", "FAA"...), for reports."""
+    fn = getattr(source, "name_for", None)
+    return fn(icao) if callable(fn) else "AISWEB"
 
 
 class RawArchive(Protocol):

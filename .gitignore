@@ -16,3 +16,6 @@ data/raw/
 data/runs/
 build/
 dist/
+data/reports/
+data/alerts/
+data/notams.db

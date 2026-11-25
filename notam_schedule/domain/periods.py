@@ -124,6 +124,7 @@ def expand_periods(
 
 
 def _parse_d(d: str, ref: datetime) -> tuple[list[_Group], list[str], bool]:
+    d = re.sub(r"\b(?:BTN|BETWEEN)\b", " ", d)          # "DLY BTN 1100-2300" (FAA/ICAO style) = "DLY 1100-2300"
     tokens = re.sub(r"\s*-\s*", "-", re.sub(r"[,;.]", " ", d)).split()
     groups: list[_Group] = []
     g = _Group()

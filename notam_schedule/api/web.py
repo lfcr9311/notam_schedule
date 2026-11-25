@@ -1,22 +1,28 @@
 """Public endpoints used by the web page (identificador de NOTAM), under /web/*. No API key.
 
-    GET  /web/notams                 runway NOTAMs per airport (same as /api/notams)
+    GET  /web/notams                 NOTAMs per airport, Brazil (AISWEB) and abroad (FAA) (same as /api/notams)
     POST /web/check                  is there a usable runway at one moment? (at most 20 legs)
     POST /web/schedule               send a schedule (raw body, header X-Filename): full analysis, Excel/CSV, history
     GET  /web/reports/{id}.{ext}     download the Excel/CSV of an analysis sent through the page
     GET  /web/changes                what changed between an analysis and the previous one
+    GET  /web/alertas.rss            RSS: twice-a-day digest of every active NOTAM (Power Automate -> e-mail)
+    GET  /web/resumos/{id}[.xlsx]    one digest as a page or Excel
+    GET  /web/inbox                  NOTAMs of the watched airports: unread / read / all (team-wide read marks)
+    PUT|DELETE /web/inbox/{id}/read  mark / unmark as read
+    POST /web/inbox/sync             query every watched airport now (besides 09:00/16:00)
+    GET|POST /web/airports, DELETE /web/airports/{icao}   the watched airports
 
 The integration API for other systems (/api/*) stays behind NOTAM_API_KEY.
 """
 from __future__ import annotations
 
 import tempfile
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import unquote
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from starlette.concurrency import run_in_threadpool
 
 from ..config import RUNS_DB, WEB_REPORTS_DIR
@@ -31,6 +37,8 @@ from ..pipelines.history import record_run
 from ..reporting.csv_export import write_csv
 from ..reporting.excel import write_excel
 from ..reporting.formatting import describe
+from ..storage.alerts import DigestStore
+from ..storage.notam_db import NotamDB
 from ..storage.runs import RunStore
 from . import schemas as s
 from .app import OPERATION_SIDE, _categories, _closure, _confidence, check_legs, query_notams
@@ -84,15 +92,22 @@ def _prune_reports(folder: Path) -> None:
 
 
 def build_router(source: NotamSource, airports: AirportDB, runs_db: str | Path = RUNS_DB,
-                 reports_dir: str | Path = WEB_REPORTS_DIR) -> APIRouter:
+                 reports_dir: str | Path = WEB_REPORTS_DIR, digests: DigestStore | None = None,
+                 notam_db: NotamDB | None = None) -> APIRouter:
     router = APIRouter(prefix="/web", tags=["web"])
     reports = Path(reports_dir)
 
+    if digests is not None:
+        _digest_routes(router, digests)
+    if notam_db is not None:
+        _inbox_routes(router, notam_db, source, airports)
+
     @router.get("/notams", response_model=s.NotamsResponse)
     def notams(icao: list[str] = Query(...), start: datetime | None = Query(None, alias="from"),
-               end: datetime | None = Query(None, alias="to"), categories: list[str] | None = Query(None)):
+               end: datetime | None = Query(None, alias="to"), categories: list[str] | None = Query(None),
+               include_other: bool = Query(False)):
         """Same as GET /api/notams, without key (used by the page)."""
-        return query_notams(source, airports, icao, start, end, categories)
+        return query_notams(source, airports, icao, start, end, categories, include_other)
 
     @router.post("/check", response_model=s.RunwayCheckResponse)
     def check(req: s.RunwayCheckRequest):
@@ -203,3 +218,161 @@ def build_router(source: NotamSource, airports: AirportDB, runs_db: str | Path =
         return _changes_response(store, run, prev, cs.changes)
 
     return router
+
+
+def _base(request: Request) -> str:
+    from .digest import public_url
+    return public_url() or str(request.base_url).rstrip("/") + "/"
+
+
+def _digest_xlsx(d: dict) -> bytes:
+    import io
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "NOTAMs"
+    head = ["Aeroporto", "Nome", "Fonte", "NOTAM", "Novo", "Pista", "Tipo", "Em vigor", "Início (UTC)",
+            "Fim (UTC)", "Horário (D)", "Texto"]
+    ws.append(head)
+    for c in ws[1]:
+        c.font = Font(bold=True)
+    red = PatternFill("solid", fgColor="FDECEC")
+    for r in d["data"]["rows"]:
+        ws.append([r["icao"], r["name"], r["source"], r["number"], "sim" if r.get("new") else "",
+                   "sim" if r["runway"] else "", r["kind"], "sim" if r["in_force"] else "futuro",
+                   (r["valid_from"] or "")[:16].replace("T", " "),
+                   "PERM" if r["permanent"] else (r["valid_to"] or "")[:16].replace("T", " ") + (" EST" if r["estimated"] else ""),
+                   r["schedule"], r["text"]])
+        if r["runway"]:
+            for c in ws[ws.max_row]:
+                c.fill = red
+    for col, width in zip("ABCDEFGHIJKL", (9, 28, 8, 11, 6, 6, 26, 9, 16, 16, 24, 90)):
+        ws.column_dimensions[col].width = width
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
+    if d["data"]["errors"]:
+        e = wb.create_sheet("Sem dados")
+        e.append(["Aeroporto", "Motivo"])
+        for k, v in sorted(d["data"]["errors"].items()):
+            e.append([k, v])
+    if d["data"]["gone"]:
+        g = wb.create_sheet("Saíram")
+        g.append(["Aeroporto", "NOTAM", "Texto"])
+        for r in d["data"]["gone"]:
+            g.append([r["icao"], r["number"], r["text"]])
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def _digest_routes(router: APIRouter, digests: DigestStore) -> None:
+    from .digest import render_rss
+
+    @router.get("/alertas.rss", response_class=Response, responses={200: {"content": {"application/rss+xml": {}}}})
+    def alerts_feed(request: Request):
+        """The last digests as RSS. Each item is one e-mail: every active NOTAM of the airport list."""
+        return Response(render_rss(digests, _base(request)), media_type="application/rss+xml; charset=utf-8")
+
+    @router.get("/resumos/{name}", response_class=Response)
+    def digest_view(name: str):
+        """A digest as a page (/web/resumos/12) or as Excel (/web/resumos/12.xlsx)."""
+        stem, _, ext = name.partition(".")
+        d = digests.get(int(stem)) if stem.isdigit() else None
+        if d is None or ext not in ("", "xlsx"):
+            raise HTTPException(404, "Resumo não encontrado.")
+        if ext == "xlsx":
+            return Response(_digest_xlsx(d), headers={"Content-Disposition": f'attachment; filename="notams_{d["id"]}.xlsx"'},
+                            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        page = (f'<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" '
+                f'content="width=device-width,initial-scale=1"><title>Resumo de NOTAMs {d["id"]}</title></head>'
+                f'<body style="margin:16px;background:#fff"><p><a href="{d["id"]}.xlsx">Baixar em Excel</a> · '
+                f'<a href="../../">Identificador de NOTAM</a></p>{d["html"]}</body></html>')
+        return Response(page, media_type="text/html; charset=utf-8")
+
+
+SYNC_MIN_INTERVAL = timedelta(minutes=2)    # the button is public: do not let it hammer the AISWEB/FAA
+
+
+def _inbox_notam(r: dict) -> s.InboxNotam:
+    return s.InboxNotam(**{k: r[k] for k in s.InboxNotam.model_fields})
+
+
+def _inbox_routes(router: APIRouter, db: NotamDB, source: NotamSource, airports: AirportDB) -> None:
+    from threading import Lock
+
+    from .digest import sync_notams
+
+    sync_lock = Lock()
+    last_sync: list[datetime] = []
+
+    @router.get("/inbox", response_model=s.InboxResponse)
+    def inbox(state: s.InboxState = Query("unread"), icao: str | None = Query(None),
+              runway_only: bool = Query(False)):
+        """Active NOTAMs of the watched airports. Read marks are shared by the whole team."""
+        code = icao.strip().upper() if icao else None
+        rows = db.notams(state, code, runway_only)
+        everything = db.notams("all")
+        per: dict[str, list[int]] = {}
+        for r in everything:
+            c = per.setdefault(r["icao"], [0, 0])
+            c[1] += 1
+            c[0] += r["read_at"] is None
+        aps = [s.InboxAirport(icao=a["icao"], name=a["name"], last_sync_at=a["last_sync_at"], last_error=a["last_error"],
+                              unread=per.get(a["icao"], [0, 0])[0], total=per.get(a["icao"], [0, 0])[1])
+               for a in db.airports()]
+        return s.InboxResponse(state=state, counts=s.InboxCounts(**db.counts(code)), airports=aps,
+                               notams=[_inbox_notam(r) for r in rows])
+
+    @router.put("/inbox/{notam_id}/read", response_model=s.InboxNotam)
+    def mark_read(notam_id: int, req: s.ReadRequest):
+        r = db.mark_read(notam_id, req.by.strip(), datetime.now(UTC))
+        if r is None:
+            raise HTTPException(404, "NOTAM não encontrado.")
+        return _inbox_notam(r)
+
+    @router.delete("/inbox/{notam_id}/read", response_model=s.InboxNotam)
+    def mark_unread(notam_id: int):
+        r = db.mark_unread(notam_id)
+        if r is None:
+            raise HTTPException(404, "NOTAM não encontrado.")
+        return _inbox_notam(r)
+
+    @router.post("/inbox/sync", response_model=s.SyncInfo)
+    async def sync_now():
+        """Query every watched airport now. At most once every 2 minutes."""
+        now = datetime.now(UTC)
+        if last_sync and now - last_sync[-1] < SYNC_MIN_INTERVAL:
+            raise HTTPException(429, "Atualizado há menos de 2 minutos. Aguarde um pouco.")
+        if not sync_lock.acquire(blocking=False):
+            raise HTTPException(409, "Já existe uma atualização em andamento.")
+        try:
+            last_sync[:] = [now]
+            rows, result, icaos = await run_in_threadpool(sync_notams, db, source, airports, now)
+        finally:
+            sync_lock.release()
+        return s.SyncInfo(synced_at=now, airports=len(icaos), notams=len(rows), new=len(result.new),
+                          ended=len(result.ended), errors=result.errors)
+
+    @router.get("/airports", response_model=list[s.InboxAirport])
+    def watched():
+        return inbox("all", None, False).airports
+
+    @router.post("/airports", response_model=list[s.InboxAirport])
+    def add_airport(req: s.AirportAdd):
+        code = req.icao.strip().upper()
+        if len(code) == 3 and code in airports.by_iata:
+            code = airports.by_iata[code].icao
+        if len(code) != 4 or not code.isalpha():
+            raise HTTPException(422, f"Código inválido: {req.icao}. Use ICAO (SBSV) ou IATA (SSA).")
+        ap = airports.by_icao.get(code)
+        db.add_airport(code, ap.name if ap else "", datetime.now(UTC))
+        return watched()
+
+    @router.delete("/airports/{icao}", response_model=list[s.InboxAirport])
+    def remove_airport(icao: str):
+        if not db.remove_airport(icao.strip().upper()):
+            raise HTTPException(404, "Aeroporto não está na lista.")
+        return watched()

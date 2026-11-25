@@ -89,9 +89,15 @@ RE_RWY_SCOPE_END = re.compile(r"\b(EXC|EXCETO|EXCEPT|RMK|OBS)\b")
 RE_RWY_CONTEXT = re.compile(RWY + r"|\bTHR\b|\bCABECEIRA\b|\b(TORA|TODA|ASDA|LDA)\b")
 
 
-def _closure_is_runway(match: re.Match) -> bool:
+# "TWY D BTN APN AND RWY 11/29 CLSD": the runway only bounds the closed taxiway/apron segment
+RE_SEGMENT_BOUND = re.compile(NOT_RWY_OBJECTS.pattern + r"[^.]*\b(?:BTN|BETWEEN|ENTRE|FM|FROM)\b[^.]*$")
+
+
+def _closure_is_runway(match: re.Match, text: str = "") -> bool:
     between = match.group(1) or ""
-    return not NOT_RWY_OBJECTS.search(between) and not EQUIP_BETWEEN.search(between)
+    if NOT_RWY_OBJECTS.search(between) or EQUIP_BETWEEN.search(between):
+        return False
+    return not RE_SEGMENT_BOUND.search(text[:match.start()])
 
 
 def classify(notam: Notam) -> Classification:
@@ -101,7 +107,7 @@ def classify(notam: Notam) -> Classification:
     if RE_AD_CLOSED.search(text):
         cats.add(AERODROME_CLOSED)
 
-    runway_closure = any(_closure_is_runway(m) for m in RE_RWY_CLOSED.finditer(text)) or bool(
+    runway_closure = any(_closure_is_runway(m, text) for m in RE_RWY_CLOSED.finditer(text)) or bool(
         RE_CLOSED_RWY.search(text)
     )
     if runway_closure:
@@ -112,7 +118,7 @@ def classify(notam: Notam) -> Classification:
         cats.add(LENGTH_REDUCTION)
     if has_rwy_context and RE_WIDTH.search(text):
         cats.add(WIDTH_REDUCTION)
-    surface = RE_SURFACE.search(text) or any(
+    surface = any(not RE_SEGMENT_BOUND.search(text[:m.start()]) for m in RE_SURFACE.finditer(text)) or any(
         not NOT_RWY_OBJECTS.search(m.group(2)) for m in RE_SURFACE_REV.finditer(text)
     )
     if surface and not cats and not RE_EQUIP_RWY.search(text):

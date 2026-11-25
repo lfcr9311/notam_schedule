@@ -52,3 +52,10 @@ def test_d_weekday_group_inherits_date_range():
 def test_perm_clipped_to_window():
     iv, ok, _ = expand_periods(mk(c="PERM", b="2601010000"), W0, W1)
     assert iv == [(W0, W1)]
+
+
+def test_btn_between_is_ignored_in_item_d():
+    assert active_days("DLY BTN 1100-2300", U(2026, 12, 1), U(2026, 12, 3, 23, 59)) == active_days(
+        "DLY 1100-2300", U(2026, 12, 1), U(2026, 12, 3, 23, 59))
+    days = active_days("25 BTN 1800-2000 27 BTN 1100-1300", U(2026, 11, 20), U(2026, 11, 30), month=11)
+    assert days == [(U(2026, 11, 25, 18), U(2026, 11, 25, 20)), (U(2026, 11, 27, 11), U(2026, 11, 27, 13))]

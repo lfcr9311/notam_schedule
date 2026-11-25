@@ -10,12 +10,12 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from ..config import AIRPORTS_FILE, CACHE_DIR, MODEL_FILE, OUTPUT_DIR, RAW_DIR, RUNS_DB, AiswebConfig
+from ..config import AIRPORTS_FILE, CACHE_DIR, MODEL_FILE, OUTPUT_DIR, RAW_DIR, RUNS_DB, AiswebConfig, FaaConfig
 from ..domain.categories import AERODROME_CLOSED, CATEGORIES, RUNWAY_CLOSED
 from ..domain.changes import ENDED, NEW, SEVERITY_CHANGED, WINDOW_CHANGED
 from ..domain.impact import daily_summary
 from ..ingestion.airports import AirportDB
-from ..ingestion.aisweb import AiswebClient
+from ..ingestion.sources import build_source
 from ..ingestion.schedule import ScheduleError, load_schedule, parse_date
 from ..pipelines.analyze import analyze
 from ..pipelines.history import record_run
@@ -31,7 +31,7 @@ DEFAULT_CATEGORIES = f"{RUNWAY_CLOSED},{AERODROME_CLOSED}"
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="notam_schedule",
-        description="Cross-check a flight schedule (CSV/XLSX) against runway-condition NOTAMs from AISWEB/DECEA.",
+        description="Cross-check a flight schedule (CSV/XLSX) against runway-condition NOTAMs (AISWEB/DECEA in Brazil, FAA NMS-API abroad).",
     )
     p.add_argument("schedule", help="flight schedule file (.csv or .xlsx)")
     p.add_argument("-o", "--output", help=f"output .xlsx (default: {OUTPUT_DIR}/notam_impact_<timestamp>.xlsx)")
@@ -53,7 +53,7 @@ def build_parser() -> argparse.ArgumentParser:
                         "(default: %(default)s = closures only)")
     p.add_argument("--airports", help=f"airport CSV for IATA->ICAO (default: {AIRPORTS_FILE} when present); "
                                       "layouts: iata,icao,name,tz or ident,latitude_deg,longitude_deg,iata_code")
-    p.add_argument("--notam-dir", help="offline mode: directory with <ICAO>.xml (and rotaer_<ICAO>.xml)")
+    p.add_argument("--notam-dir", help="offline mode: directory with <ICAO>.xml (and rotaer_<ICAO>.xml); faa_<ICAO>.json outside Brazil")
     p.add_argument("--cache-dir", default=str(CACHE_DIR), help="API response cache directory")
     p.add_argument("--cache-ttl", type=int, default=60, metavar="MIN", help="cache lifetime (default 60 min)")
     p.add_argument("--no-rotaer", action="store_true", help="do not query ROTAER (published runway length)")
@@ -109,9 +109,10 @@ def main(argv: list[str] | None = None) -> int:
         detector = HybridDetector(args.model, args.detector, args.threshold)
 
     config = None if args.notam_dir else AiswebConfig.from_env()
+    faa = None if args.notam_dir else FaaConfig.from_env()
     archive = None if args.notam_dir else FileRawArchive(RAW_DIR)
-    client = AiswebClient(config, cache_dir=args.cache_dir, cache_ttl_min=args.cache_ttl, offline_dir=args.notam_dir,
-                          archive=archive)
+    client = build_source(config, faa, offline_dir=args.notam_dir, cache_dir=args.cache_dir,
+                          cache_ttl_min=args.cache_ttl, archive=archive)
 
     res = analyze(flights, client, args.margin_before, args.margin_after, categories,
                   use_rotaer=not args.no_rotaer, detector=detector)
@@ -121,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
         "Malha": args.schedule, "Horários da malha": sched.time_basis,
         "Margem (min) antes/depois": f"{args.margin_before}/{args.margin_after}",
         "Categorias": "todas" if categories is None else ", ".join(sorted(categories)),
-        "Fonte NOTAM": args.notam_dir or "API AISWEB",
+        "Fonte NOTAM": args.notam_dir or ("API AISWEB + FAA NMS" if faa else "API AISWEB"),
         "Detector": args.detector if not detector else
         f"{args.detector} — modelo {detector.model.version}, limiar {detector.threshold}",
     }
@@ -142,7 +143,7 @@ def main(argv: list[str] | None = None) -> int:
             aps = ", ".join(sorted(d["airports"]))
             print(f"  {d['date']:%d/%m/%Y}: {d['impacted']}/{d['flights']} voos ({d['critical']} críticos) — {aps}")
     if res.out_of_coverage:
-        print(f"Fora da cobertura DECEA (não consultados): {', '.join(res.out_of_coverage)}")
+        print(f"Fora da cobertura (sem fonte de NOTAM, não consultados): {', '.join(res.out_of_coverage)}")
     for ap, err in res.errors.items():
         print(f"ERRO {ap}: {err}", file=sys.stderr)
     if changes is not None:

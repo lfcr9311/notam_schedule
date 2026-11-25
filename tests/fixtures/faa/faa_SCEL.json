@@ -1,0 +1,227 @@
+{
+ "status": "Success",
+ "data": {
+  "geojson": [
+   {
+    "type": "Feature",
+    "properties": {
+     "coreNOTAMData": {
+      "notamEvent": {
+       "encoding": "ANNOTATION"
+      },
+      "notam": {
+       "id": "NMS_ID_1000000000000001",
+       "series": "A",
+       "number": "4321",
+       "year": "2026",
+       "type": "R",
+       "issued": "2026-11-10T12:00:00.000Z",
+       "affectedFir": "SCEZ",
+       "selectionCode": "QMRLC",
+       "location": "SCEL",
+       "effectiveStart": "2026-11-15T00:00:00.000Z",
+       "effectiveEnd": "2026-12-15T23:59:00.000Z",
+       "estimated": "false",
+       "text": "RWY 17L/35R CLSD",
+       "classification": "INTERNATIONAL",
+       "accountId": "XYZ",
+       "lastUpdated": "2026-11-10T12:00:00.000Z",
+       "icaoLocation": "SCEL",
+       "schedule": ""
+      },
+      "notamTranslation": [
+       {
+        "type": "ICAO",
+        "icao_message": "A4321/26 NOTAMR A4000/26\nQ) SCEZ/QMRLC/IV/NBO/A/000/999/3323S07047W005\nA) SCEL B) 2611150000 C) 2612152359\nD) DAILY 0300-0700\nE) RWY 17L/35R CLSD"
+       }
+      ]
+     }
+    },
+    "geometry": {
+     "type": "GeometryCollection",
+     "geometries": []
+    }
+   },
+   {
+    "type": "Feature",
+    "properties": {
+     "coreNOTAMData": {
+      "notamEvent": {
+       "encoding": "ANNOTATION"
+      },
+      "notam": {
+       "id": "NMS_ID_1000000000000002",
+       "series": "A",
+       "number": "4000",
+       "year": "2026",
+       "type": "N",
+       "issued": "2026-11-10T12:00:00.000Z",
+       "affectedFir": "SCEZ",
+       "selectionCode": "QMRLC",
+       "location": "SCEL",
+       "effectiveStart": "2026-11-01T00:00:00.000Z",
+       "effectiveEnd": "2026-12-15T23:59:00.000Z",
+       "estimated": "false",
+       "text": "RWY 17L/35R CLSD DLY 0200-0800",
+       "classification": "INTERNATIONAL",
+       "accountId": "XYZ",
+       "lastUpdated": "2026-11-10T12:00:00.000Z",
+       "icaoLocation": "SCEL",
+       "schedule": ""
+      },
+      "notamTranslation": []
+     }
+    },
+    "geometry": {
+     "type": "GeometryCollection",
+     "geometries": []
+    }
+   },
+   {
+    "type": "Feature",
+    "properties": {
+     "coreNOTAMData": {
+      "notamEvent": {
+       "encoding": "ANNOTATION"
+      },
+      "notam": {
+       "id": "NMS_ID_1000000000000003",
+       "series": "A",
+       "number": "4400",
+       "year": "2026",
+       "type": "N",
+       "issued": "2026-11-10T12:00:00.000Z",
+       "affectedFir": "SCEZ",
+       "selectionCode": "QMXLC",
+       "location": "SCEL",
+       "effectiveStart": "2026-11-16T10:00:00.000Z",
+       "effectiveEnd": "2026-11-30T20:00:00.000Z",
+       "estimated": "true",
+       "text": "TWY B BTN TWY B3 AND B5 CLSD",
+       "classification": "INTERNATIONAL",
+       "accountId": "XYZ",
+       "lastUpdated": "2026-11-10T12:00:00.000Z",
+       "icaoLocation": "SCEL",
+       "schedule": ""
+      },
+      "notamTranslation": [
+       {
+        "type": "ICAO",
+        "formattedText": "A4400/26 NOTAMN \r\nQ) SCEZ/QMXLC/IV/M/A/000/999/3323S07047W005 \r\nA) SCEL B) 2611161000 C) 2611302000 EST \r\nE) TWY B BTN TWY B3 AND B5 CLSD"
+       }
+      ]
+     }
+    },
+    "geometry": {
+     "type": "GeometryCollection",
+     "geometries": []
+    }
+   },
+   {
+    "type": "Feature",
+    "properties": {
+     "coreNOTAMData": {
+      "notamEvent": {
+       "encoding": "ANNOTATION"
+      },
+      "notam": {
+       "id": "NMS_ID_1000000000000004",
+       "series": "A",
+       "number": "3999",
+       "year": "2026",
+       "type": "N",
+       "issued": "2026-11-10T12:00:00.000Z",
+       "affectedFir": "SCEZ",
+       "selectionCode": "QICAS",
+       "location": "SCEL",
+       "effectiveStart": "2026-12-20T00:00:00.000Z",
+       "effectiveEnd": "2026-12-21T00:00:00.000Z",
+       "estimated": "false",
+       "text": "ILS RWY 17R U/S",
+       "classification": "INTERNATIONAL",
+       "accountId": "XYZ",
+       "lastUpdated": "2026-11-10T12:00:00.000Z",
+       "icaoLocation": "SCEL",
+       "schedule": ""
+      },
+      "notamTranslation": []
+     }
+    },
+    "geometry": {
+     "type": "GeometryCollection",
+     "geometries": []
+    }
+   },
+   {
+    "type": "Feature",
+    "properties": {
+     "coreNOTAMData": {
+      "notamEvent": {
+       "encoding": "ANNOTATION"
+      },
+      "notam": {
+       "id": "NMS_ID_1000000000000005",
+       "series": "A",
+       "number": "4500",
+       "year": "2026",
+       "type": "N",
+       "issued": "2026-11-10T12:00:00.000Z",
+       "affectedFir": "SCEZ",
+       "selectionCode": "QXXXX",
+       "location": "SCEL",
+       "effectiveStart": "2026-11-01T00:00:00.000Z",
+       "effectiveEnd": "PERM",
+       "estimated": "false",
+       "text": "TEST NOTAM PLEASE DISREGARD",
+       "classification": "INTERNATIONAL",
+       "accountId": "XYZ",
+       "lastUpdated": "2026-11-10T12:00:00.000Z",
+       "icaoLocation": "SCEL",
+       "schedule": ""
+      },
+      "notamTranslation": []
+     }
+    },
+    "geometry": {
+     "type": "GeometryCollection",
+     "geometries": []
+    }
+   },
+   {
+    "type": "Feature",
+    "properties": {
+     "coreNOTAMData": {
+      "notamEvent": {
+       "encoding": "ANNOTATION"
+      },
+      "notam": {
+       "id": "NMS_ID_1000000000000009",
+       "series": "W",
+       "number": "W0657/26",
+       "year": "2026",
+       "type": "N",
+       "issued": "2026-11-10T12:00:00.000Z",
+       "affectedFir": "SCEZ",
+       "selectionCode": "QMRLC",
+       "location": "SCEL",
+       "effectiveStart": "2026-11-01T00:00:00.000Z",
+       "effectiveEnd": "2026-12-15T23:59:00.000Z",
+       "estimated": "false",
+       "text": "US DOD DAFIF AND E-S CSA B-235; RWY 17L/35R CLSD. REST DATA UNCHG.",
+       "classification": "MIL",
+       "accountId": "XYZ",
+       "lastUpdated": "2026-11-10T12:00:00.000Z",
+       "icaoLocation": "SCEL",
+       "schedule": ""
+      },
+      "notamTranslation": []
+     }
+    },
+    "geometry": {
+     "type": "GeometryCollection",
+     "geometries": []
+    }
+   }
+  ]
+ }
+}

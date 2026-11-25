@@ -10,7 +10,8 @@ from tests.helpers import EX, FIX
 @pytest.fixture()
 def client(tmp_path):
     app = create_app(AiswebClient(None, offline_dir=FIX), "offline", api_key="segredo",
-                     runs_db=tmp_path / "runs.sqlite", reports_dir=tmp_path / "reports")
+                     runs_db=tmp_path / "runs.sqlite", reports_dir=tmp_path / "reports",
+                     alerts_db=tmp_path / "alerts.sqlite")
     return TestClient(app)
 
 

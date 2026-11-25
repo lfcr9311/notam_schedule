@@ -65,14 +65,35 @@ class RunwayNotam(BaseModel):
     duplicates: list[str] = Field(default_factory=list, description="Same NOTAM published in another language")
 
 
+class OtherNotam(BaseModel):
+    """A NOTAM that is not a runway restriction (taxiway, lights, navaids, obstacles, airspace...)."""
+    id: str
+    number: str
+    airport: str
+    qcode: str | None = Field(None, description="Q-code letters without the leading Q (subject + condition)")
+    valid_from: datetime | None
+    valid_to: datetime | None
+    permanent: bool
+    valid_to_estimated: bool
+    schedule: str = Field(description="Item D as published")
+    schedule_understood: bool
+    active_periods: list[Period]
+    text: str
+    note: str = ""
+
+
 class AirportNotams(BaseModel):
     icao: str = Field(pattern=ICAO_PATTERN)
     name: str | None = None
     timezone: str | None = Field(None, description="IANA time zone of the airport, for local times", examples=["America/Bahia"])
+    source: str | None = Field(None, description="NOTAM provider: AISWEB (Brazil) or FAA (NMS-API, outside Brazil)")
     status: AirportStatus = Field(description="error/out_of_coverage mean NO DATA, never 'no restriction'")
     error: str | None = None
-    runways: list[Runway] = Field(default_factory=list, description="Runways published in ROTAER")
+    runways: list[Runway] = Field(default_factory=list,
+                                  description="Runways published in ROTAER (Brazil only; empty for FAA airports)")
     notams: list[RunwayNotam] = Field(default_factory=list)
+    other_notams: list[OtherNotam] = Field(default_factory=list,
+                                           description="Only with include_other=true: every non-runway NOTAM")
 
 
 class NotamsResponse(BaseModel):
@@ -138,6 +159,7 @@ class Health(BaseModel):
     status: Literal["ok"]
     version: str
     source: Literal["aisweb", "offline"]
+    international: bool = Field(False, description="Whether NOTAMs outside Brazil (FAA NMS-API) are enabled")
 
 
 # ---------------------------------------------------------------- web page (public /web/* endpoints)
@@ -231,3 +253,75 @@ class ScheduleResult(BaseModel):
     changes: ChangesResponse
     downloads: Downloads
 
+
+
+class DigestInfo(BaseModel):
+    """A NOTAM digest (the e-mail sent to the analysts through the RSS feed)."""
+    id: int
+    title: str
+    generated_at: datetime
+    page: str = Field(description="The digest as a web page (Excel link inside)")
+    feed: str = Field(description="RSS feed that Power Automate reads")
+
+
+# ---------------------------------------------------------------- NOTAM inbox (watched airports, read marks)
+InboxState = Literal["unread", "read", "all"]
+
+
+class InboxNotam(BaseModel):
+    id: int
+    icao: str
+    number: str
+    source: str
+    runway: bool = Field(description="Runway/aerodrome restriction")
+    kind: str
+    severity: str
+    runways: list[str]
+    valid_from: datetime | None
+    valid_to: datetime | None
+    permanent: bool
+    estimated: bool
+    schedule: str
+    text: str
+    first_seen: datetime
+    read_at: datetime | None
+    read_by: str | None
+
+
+class InboxAirport(BaseModel):
+    icao: str
+    name: str
+    last_sync_at: datetime | None
+    last_error: str | None = Field(None, description="Last query failed: its NOTAMs may be out of date")
+    unread: int
+    total: int
+
+
+class InboxCounts(BaseModel):
+    unread: int
+    read: int
+    all: int
+
+
+class InboxResponse(BaseModel):
+    state: InboxState
+    counts: InboxCounts
+    airports: list[InboxAirport]
+    notams: list[InboxNotam]
+
+
+class ReadRequest(BaseModel):
+    by: str = Field(min_length=1, max_length=80, description="Who read it (name shown to the team)")
+
+
+class AirportAdd(BaseModel):
+    icao: str = Field(description="ICAO (SBSV) or IATA (SSA)")
+
+
+class SyncInfo(BaseModel):
+    synced_at: datetime
+    airports: int
+    notams: int
+    new: int
+    ended: int
+    errors: dict[str, str]

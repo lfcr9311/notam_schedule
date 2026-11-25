@@ -35,7 +35,7 @@ def add_sheet(wb, ctx: ReportContext) -> None:
         ("NOTAMs de pista vigentes no período", len(all_rns)),
         ("NOTAMs que afetam ao menos um voo", len(by_rn)),
         ("Aeroportos consultados", len(res.runway_notams)),
-        ("Fora da cobertura DECEA", len(res.out_of_coverage)),
+        ("Fora da cobertura (sem NOTAM)", len(res.out_of_coverage)),
     ]
     ws.append(["Indicador", "Valor"])
     style_header(ws[ws.max_row])
